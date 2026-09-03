@@ -1,0 +1,30 @@
+<view class="selector-page">
+  <view class="selector-header">
+    <text class="selector-title">选择要插入的页面</text>
+    <view class="selector-actions">
+      <text class="select-all" bindtap="onToggleAll">{{allSelected ? '取消全选' : '全选'}}</text>
+    </view>
+  </view>
+
+  <scroll-view class="page-grid" scroll-y>
+    <view class="grid">
+      <view
+        wx:for="{{pages}}"
+        wx:key="index"
+        class="grid-item {{item.selected ? 'selected' : ''}}"
+        bindtap="onTogglePage"
+        data-index="{{index}}"
+      >
+        <view class="grid-thumb">
+          <view class="grid-page-num">{{index + 1}}</view>
+          <view class="grid-check" wx:if="{{item.selected}}">✓</view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="selector-footer">
+    <text class="selected-count">已选 {{selectedCount}} 页</text>
+    <view class="btn-insert" bindtap="onInsert">插入</view>
+  </view>
+</view>

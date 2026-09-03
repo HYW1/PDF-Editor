@@ -1,0 +1,23 @@
+<view class="signature-page">
+  <view class="sig-topbar">
+    <view class="sig-cancel" bindtap="onCancel">取消</view>
+    <view class="sig-title">手写签名</view>
+    <view class="sig-confirm" bindtap="onConfirm">确认</view>
+  </view>
+
+  <view class="canvas-wrapper">
+    <canvas
+      type="2d"
+      id="sig-canvas"
+      class="sig-canvas"
+      bindtouchstart="onTouchStart"
+      bindtouchmove="onTouchMove"
+      bindtouchend="onTouchEnd"
+    ></canvas>
+    <view class="sig-hint" wx:if="{{!hasDrawn}}">在此区域手写签名</view>
+  </view>
+
+  <view class="sig-actions">
+    <view class="sig-btn-clear" bindtap="onClear">清除重签</view>
+  </view>
+</view>

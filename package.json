@@ -1,0 +1,23 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HYW1/PDF-Editor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HYW1/PDF-Editor/issues"
+  },
+  "homepage": "https://github.com/HYW1/PDF-Editor#readme",
+  "dependencies": {
+    "pdf-lib": "^1.17.1"
+  }
+}

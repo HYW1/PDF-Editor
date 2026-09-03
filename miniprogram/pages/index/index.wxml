@@ -1,0 +1,46 @@
+<view class="page">
+  <view class="header">
+    <view class="title">PDF小助手</view>
+    <view class="subtitle">简单的 PDF 操作，不用打开 WPS</view>
+  </view>
+
+  <view class="cards">
+    <view class="card card-primary" bindtap="onEditPDF">
+      <view class="card-icon">
+        <view class="icon-edit">✎</view>
+      </view>
+      <view class="card-body">
+        <view class="card-title">编辑 PDF</view>
+        <view class="card-desc">删除、排序、旋转页面，添加签名和文字</view>
+      </view>
+      <view class="card-arrow">›</view>
+    </view>
+
+    <view class="card" bindtap="onMergePDF">
+      <view class="card-icon">
+        <view class="icon-merge">⊞</view>
+      </view>
+      <view class="card-body">
+        <view class="card-title">合并 PDF</view>
+        <view class="card-desc">将多个 PDF 合并为一个文件</view>
+      </view>
+      <view class="card-arrow">›</view>
+    </view>
+
+    <view class="card card-disabled" bindtap="onWebToPDF">
+      <view class="card-icon">
+        <view class="icon-web">⊕</view>
+      </view>
+      <view class="card-body">
+        <view class="card-title">网页转 PDF</view>
+        <view class="card-desc">将网页保存为 PDF 文件</view>
+        <view class="card-badge">即将推出</view>
+      </view>
+      <view class="card-arrow">›</view>
+    </view>
+  </view>
+
+  <view class="footer">
+    <text class="footer-text">轻量 PDF 工具，几秒钟搞定</text>
+  </view>
+</view>

@@ -1,0 +1,121 @@
+<view class="editor-page">
+  <!-- Top bar -->
+  <view class="topbar">
+    <view class="topbar-left">
+      <view class="btn-back" bindtap="onBack">←</view>
+      <view class="file-name">{{fileName}}</view>
+    </view>
+    <view class="topbar-right">
+      <view class="btn-icon {{canUndo ? '' : 'disabled'}}" bindtap="onUndo">↶</view>
+      <view class="btn-icon {{canRedo ? '' : 'disabled'}}" bindtap="onRedo">↷</view>
+      <view class="btn-export" bindtap="onExport">导出</view>
+    </view>
+  </view>
+
+  <!-- Page preview area -->
+  <view class="preview-area">
+    <view class="preview-container" wx:if="{{pages.length > 0}}">
+      <view class="page-indicator">{{currentPageIndex + 1}} / {{pages.length}}</view>
+      <swiper
+        class="page-swiper"
+        current="{{currentPageIndex}}"
+        bindchange="onSwiperChange"
+        duration="200"
+      >
+        <swiper-item wx:for="{{pages}}" wx:key="id">
+          <view class="preview-page" style="width:{{previewWidth}}rpx; height:{{previewHeight}}rpx;">
+            <canvas
+              type="2d"
+              id="preview-canvas-{{index}}"
+              class="preview-canvas"
+              style="width:{{previewWidth}}rpx; height:{{previewHeight}}rpx;"
+            ></canvas>
+            <!-- Annotations overlay -->
+            <block wx:for="{{annotations}}" wx:for-item="ann" wx:for-index="ai" wx:key="id">
+              <view
+                wx:if="{{ann.pageId === item.id}}"
+                class="annotation annotation-{{ann.type}}"
+                style="left:{{ann.x * 100}}%; top:{{ann.y * 100}}%; width:{{ann.width * 100}}%; height:{{ann.height * 100}}%;"
+                catchtap="onAnnotationTap"
+                data-id="{{ann.id}}"
+              >
+                <text wx:if="{{ann.type === 'text'}}" style="font-size:{{ann.fontSize || 14}}px; color:{{ann.color || '#000'}};">{{ann.content}}</text>
+                <image wx:if="{{ann.type === 'signature'}}" src="{{ann.content}}" mode="aspectFit" class="ann-image"></image>
+              </view>
+            </block>
+          </view>
+        </swiper-item>
+      </swiper>
+    </view>
+    <view class="empty-state" wx:else>
+      <view class="empty-icon">📄</view>
+      <view class="empty-text">正在加载 PDF...</view>
+    </view>
+  </view>
+
+  <!-- Bottom toolbar -->
+  <view class="toolbar">
+    <view class="tool-item" bindtap="onDeletePage">
+      <view class="tool-icon">🗑</view>
+      <view class="tool-label">删除</view>
+    </view>
+    <view class="tool-item" bindtap="onShowAddMenu">
+      <view class="tool-icon">＋</view>
+      <view class="tool-label">添加</view>
+    </view>
+    <view class="tool-item" bindtap="onSignature">
+      <view class="tool-icon">✍</view>
+      <view class="tool-label">签名</view>
+    </view>
+    <view class="tool-item" bindtap="onAddText">
+      <view class="tool-icon">T</view>
+      <view class="tool-label">文字</view>
+    </view>
+    <view class="tool-item" bindtap="onRotatePage">
+      <view class="tool-icon">↻</view>
+      <view class="tool-label">旋转</view>
+    </view>
+  </view>
+
+  <!-- Thumbnail strip -->
+  <scroll-view class="thumbnail-strip" scroll-x enable-flex>
+    <view
+      wx:for="{{pages}}"
+      wx:key="id"
+      class="thumb-item {{currentPageIndex === index ? 'active' : ''}}"
+      bindtap="onThumbTap"
+      bindlongpress="onThumbLongPress"
+      data-index="{{index}}"
+    >
+      <view class="thumb-page" style="width:{{thumbW}}rpx; height:{{thumbH}}rpx;">
+        <canvas
+          type="2d"
+          id="thumb-canvas-{{index}}"
+          class="thumb-canvas"
+          style="width:{{thumbW}}rpx; height:{{thumbH}}rpx;"
+        ></canvas>
+        <view class="thumb-rotation" wx:if="{{item.rotation}}">{{item.rotation}}°</view>
+      </view>
+      <view class="thumb-index">{{index + 1}}</view>
+    </view>
+  </scroll-view>
+
+  <!-- Add page action sheet -->
+  <view class="mask" wx:if="{{showAddMenu}}" bindtap="onHideAddMenu"></view>
+  <view class="add-menu {{showAddMenu ? 'show' : ''}}">
+    <view class="add-menu-title">添加页面</view>
+    <view class="add-menu-item" bindtap="onAddImage">
+      <text class="add-menu-icon">🖼</text>
+      <text>图片</text>
+    </view>
+    <view class="add-menu-item" bindtap="onAddPDF">
+      <text class="add-menu-icon">📄</text>
+      <text>PDF</text>
+    </view>
+    <view class="add-menu-item" bindtap="onAddBlank">
+      <text class="add-menu-icon">📃</text>
+      <text>空白页</text>
+    </view>
+    <view class="add-menu-cancel" bindtap="onHideAddMenu">取消</view>
+  </view>
+</view>

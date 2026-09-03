@@ -1,0 +1,128 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 32rpx;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #eef1ff 0%, #f5f5f5 40%);
+}
+
+.header {
+  padding-top: 160rpx;
+  padding-bottom: 60rpx;
+  text-align: center;
+}
+
+.title {
+  font-size: 56rpx;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 2rpx;
+}
+
+.subtitle {
+  font-size: 28rpx;
+  color: var(--text-secondary);
+  margin-top: 16rpx;
+}
+
+.cards {
+  flex: 1;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 36rpx 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: var(--shadow);
+  transition: transform 0.1s;
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+.card-primary {
+  background: var(--primary);
+}
+
+.card-primary .card-title {
+  color: #fff;
+}
+
+.card-primary .card-desc {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.card-primary .card-arrow {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.card-primary .card-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.card-disabled {
+  opacity: 0.6;
+}
+
+.card-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 20rpx;
+  background: var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.card-body {
+  flex: 1;
+  margin-left: 28rpx;
+}
+
+.card-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.card-desc {
+  font-size: 24rpx;
+  color: var(--text-hint);
+  margin-top: 6rpx;
+}
+
+.card-badge {
+  display: inline-block;
+  font-size: 20rpx;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  margin-top: 8rpx;
+}
+
+.card-arrow {
+  font-size: 40rpx;
+  color: var(--text-hint);
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+
+.footer {
+  padding: 60rpx 0 80rpx;
+  text-align: center;
+}
+
+.footer-text {
+  font-size: 24rpx;
+  color: var(--text-hint);
+}
