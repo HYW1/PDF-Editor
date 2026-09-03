@@ -27,17 +27,24 @@ export function Editor() {
   const [toast, setToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
-  const [previewWidth, setPreviewWidth] = useState(320);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [previewWidth, setPreviewWidth] = useState(280);
 
   useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
     const update = () => {
-      const wide = window.innerWidth >= 860;
-      setPreviewWidth(Math.min(wide ? 620 : window.innerWidth - 32, 620));
+      const ratio = currentPage ? currentPage.height / currentPage.width : 1.414;
+      const availW = Math.max(160, el.clientWidth - 24);
+      const availH = Math.max(160, el.clientHeight - 24);
+      const widthFromHeight = availH / ratio;
+      setPreviewWidth(Math.floor(Math.min(availW, widthFromHeight, 620)));
     };
     update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [currentPage]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -141,7 +148,7 @@ export function Editor() {
         </div>
       </div>
 
-      <div className="preview-area" onPointerDown={() => session.selectAnnotation(null)}>
+      <div className="preview-area" ref={previewRef} onPointerDown={() => session.selectAnnotation(null)}>
         <div className="page-indicator">
           {pages.length ? `${currentPageIndex + 1} / ${pages.length}` : '0 / 0'}
         </div>

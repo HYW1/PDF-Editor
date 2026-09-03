@@ -6,11 +6,18 @@ import type { LoadedDoc, PageInfo } from './types';
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const docCache = new Map<string, Promise<pdfjs.PDFDocumentProxy>>();
+const renderTasks = new WeakMap<HTMLCanvasElement, { cancel: () => void }>();
+const renderTokens = new WeakMap<HTMLCanvasElement, number>();
+
+export function cancelRender(canvas: HTMLCanvasElement): void {
+  renderTasks.get(canvas)?.cancel();
+  renderTasks.delete(canvas);
+}
 
 function getPdfJsDoc(doc: LoadedDoc) {
   let cached = docCache.get(doc.id);
   if (!cached) {
-    cached = pdfjs.getDocument({ data: new Uint8Array(doc.bytes) }).promise;
+    cached = pdfjs.getDocument({ data: new Uint8Array(doc.bytes.slice(0)) }).promise;
     docCache.set(doc.id, cached);
   }
   return cached;
@@ -38,6 +45,9 @@ export async function renderPageToCanvas(
 
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
+  const token = (renderTokens.get(canvas) || 0) + 1;
+  renderTokens.set(canvas, token);
+  cancelRender(canvas);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, cssWidth, cssHeight);
@@ -60,6 +70,7 @@ export async function renderPageToCanvas(
 
   try {
     const pdf = await getPdfJsDoc(doc);
+    if (renderTokens.get(canvas) !== token) return;
     const pdfPage = await pdf.getPage(page.source.pageIndex + 1);
     const base = pdfPage.getViewport({ scale: 1, rotation: page.rotation });
     const scale = cssWidth / base.width;
@@ -69,8 +80,12 @@ export async function renderPageToCanvas(
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, viewport.width, viewport.height);
-    await pdfPage.render({ canvasContext: ctx, viewport }).promise;
+    const task = pdfPage.render({ canvasContext: ctx, viewport });
+    renderTasks.set(canvas, task);
+    await task.promise;
+    renderTasks.delete(canvas);
   } catch (error) {
+    if (String(error).includes('RenderingCancelledException')) return;
     console.error('render page failed', error);
     drawPlaceholder(ctx, cssWidth, cssHeight, '无法预览');
   }

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { renderPageToCanvas } from '../core/pdf-render';
+import { cancelRender, renderPageToCanvas } from '../core/pdf-render';
 import type { LoadedDoc, PageInfo } from '../core/types';
 
 interface PageCanvasProps {
@@ -21,6 +21,7 @@ export function PageCanvas({ page, docs, maxWidth, className }: PageCanvasProps)
     });
     return () => {
       cancelled = true;
+      cancelRender(canvas);
     };
   }, [docs, maxWidth, page]);
 

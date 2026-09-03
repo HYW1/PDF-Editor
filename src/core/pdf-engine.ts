@@ -19,12 +19,17 @@ export async function loadPdfFile(file: File): Promise<{ doc: LoadedDoc; pages: 
   return loadPdfBytes(bytes, file.name);
 }
 
+export function copyBuffer(bytes: ArrayBuffer): ArrayBuffer {
+  return bytes.slice(0);
+}
+
 export async function loadPdfBytes(
   bytes: ArrayBuffer,
   name: string
 ): Promise<{ doc: LoadedDoc; pages: PageInfo[] }> {
-  const pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
-  const doc: LoadedDoc = { id: generateId('doc'), name, bytes };
+  const safeBytes = copyBuffer(bytes);
+  const pdf = await PDFDocument.load(safeBytes, { ignoreEncryption: true });
+  const doc: LoadedDoc = { id: generateId('doc'), name, bytes: copyBuffer(safeBytes) };
   const pages: PageInfo[] = pdf.getPages().map((page, pageIndex) => {
     const { width, height } = page.getSize();
     return {
@@ -63,7 +68,7 @@ export async function makeImagePages(
 ): Promise<PageInfo[]> {
   const result: PageInfo[] = [];
   for (const file of files) {
-    const bytes = await file.arrayBuffer();
+    const bytes = copyBuffer(await file.arrayBuffer());
     result.push({
       id: generateId('page'),
       width: pageSize.width,
@@ -138,7 +143,7 @@ async function appendPage(
     if (!src) {
       const doc = docs[page.source.docId];
       if (!doc) throw new Error('源 PDF 不存在');
-      src = await PDFDocument.load(doc.bytes, { ignoreEncryption: true });
+      src = await PDFDocument.load(copyBuffer(doc.bytes), { ignoreEncryption: true });
       loadedCache.set(page.source.docId, src);
     }
     const [copied] = await out.copyPages(src, [page.source.pageIndex]);

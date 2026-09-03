@@ -271,17 +271,22 @@ button {
   place-items: center;
   padding: 16px 12px;
   position: relative;
+  overflow: hidden;
 }
 
 .page-stage {
   position: relative;
   background: #fff;
   box-shadow: 0 10px 30px rgba(22, 24, 29, 0.12);
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .page-stage canvas {
   display: block;
-  max-width: min(92vw, 560px);
+  max-width: min(92vw, 560px, 100%);
+  max-height: 100%;
+  width: auto;
   height: auto;
 }
 
@@ -300,6 +305,8 @@ button {
   display: flex;
   background: #fff;
   border-top: 1px solid var(--border);
+  position: relative;
+  z-index: 2;
 }
 
 .tool {
@@ -580,7 +587,7 @@ button {
   }
 
   .page-stage canvas {
-    max-width: min(56vw, 620px);
+    max-width: min(56vw, 620px, 100%);
   }
 
   .file-name {
