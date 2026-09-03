@@ -1,23 +1,31 @@
 {
-  "name": "workspace",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "pdf-helper",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "PDF小助手 — 多端轻量 PDF 页面处理工具",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5173",
+    "test": "node scripts/verify-pdf.mjs"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/HYW1/PDF-Editor.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/HYW1/PDF-Editor/issues"
-  },
-  "homepage": "https://github.com/HYW1/PDF-Editor#readme",
+  "license": "MIT",
   "dependencies": {
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.10.38",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11"
   }
 }
