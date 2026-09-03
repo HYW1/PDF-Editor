@@ -4,8 +4,22 @@ import { exportPdf } from '../core/pdf-engine';
 import { recordExport } from '../core/quota';
 import type { Annotation, FitMode } from '../core/types';
 import { usePdfSession } from '../session/PdfSession';
+import {
+  IconBack,
+  IconBlank,
+  IconFile,
+  IconImage,
+  IconPlus,
+  IconRedo,
+  IconRotate,
+  IconSign,
+  IconText,
+  IconTrash,
+  IconUndo
+} from '../ui/icons';
 import { PageCanvas } from '../ui/PageCanvas';
 import { Toast } from '../ui/Toast';
+import { useIsDesktop } from '../ui/useMedia';
 
 type Sheet = 'add' | 'fit' | 'blank' | 'text' | null;
 
@@ -29,6 +43,8 @@ export function Editor() {
   const stageRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [previewWidth, setPreviewWidth] = useState(280);
+  const isDesktop = useIsDesktop();
+  const swipe = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const el = previewRef.current;
@@ -130,17 +146,18 @@ export function Editor() {
     <div className="editor">
       <div className="topbar">
         <div className="topbar-left">
-          <button className="text-btn" onClick={session.goHome}>
+          <button className="nav-btn" onClick={session.goHome}>
+            <IconBack size={20} />
             返回
           </button>
           <div className="file-name">{fileName}</div>
         </div>
         <div className="topbar-right">
           <button className="icon-btn" disabled={!canUndo} onClick={session.undo} title="撤销">
-            ↶
+            <IconUndo size={20} />
           </button>
           <button className="icon-btn" disabled={!canRedo} onClick={session.redo} title="重做">
-            ↷
+            <IconRedo size={20} />
           </button>
           <button className="export-btn" onClick={onExport} disabled={exporting}>
             {exporting ? '导出中' : '导出'}
@@ -148,7 +165,27 @@ export function Editor() {
         </div>
       </div>
 
-      <div className="preview-area" ref={previewRef} onPointerDown={() => session.selectAnnotation(null)}>
+      <div
+        className="preview-area"
+        ref={previewRef}
+        onPointerDown={(event) => {
+          session.selectAnnotation(null);
+          swipe.current = { x: event.clientX, y: event.clientY };
+        }}
+        onPointerUp={(event) => {
+          if (!swipe.current || isDesktop) return;
+          const dx = event.clientX - swipe.current.x;
+          const dy = event.clientY - swipe.current.y;
+          swipe.current = null;
+          if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy)) return;
+          if (dx < 0 && currentPageIndex < pages.length - 1) {
+            session.setCurrentPage(currentPageIndex + 1);
+          }
+          if (dx > 0 && currentPageIndex > 0) {
+            session.setCurrentPage(currentPageIndex - 1);
+          }
+        }}
+      >
         <div className="page-indicator">
           {pages.length ? `${currentPageIndex + 1} / ${pages.length}` : '0 / 0'}
         </div>
@@ -172,23 +209,23 @@ export function Editor() {
 
       <div className="toolbar">
         <button className="tool" onClick={onDeletePage}>
-          <span className="tool-icon">⌫</span>
+          <IconTrash size={22} />
           删除
         </button>
         <button className="tool" onClick={() => setSheet('add')}>
-          <span className="tool-icon">＋</span>
+          <IconPlus size={22} />
           添加
         </button>
         <button className="tool" onClick={session.openSignature}>
-          <span className="tool-icon">✍</span>
+          <IconSign size={22} />
           签名
         </button>
         <button className="tool" onClick={() => setSheet('text')}>
-          <span className="tool-icon">T</span>
+          <IconText size={22} />
           文字
         </button>
         <button className="tool" onClick={session.rotateCurrentPage}>
-          <span className="tool-icon">↻</span>
+          <IconRotate size={22} />
           旋转
         </button>
       </div>
@@ -220,16 +257,22 @@ export function Editor() {
 
       {sheet === 'add' && (
         <div className="sheet">
+          <div className="sheet-grabber" />
           <h3>添加页面</h3>
+          <div className="sheet-group">
           <button className="sheet-item" onClick={onAddImage}>
+            <IconImage size={20} />
             ＋ 图片
           </button>
           <button className="sheet-item" onClick={onAddPdf}>
+            <IconFile size={20} />
             ＋ PDF
           </button>
           <button className="sheet-item" onClick={() => setSheet('blank')}>
+            <IconBlank size={20} />
             ＋ 空白页
           </button>
+          </div>
           <button className="sheet-cancel" onClick={() => setSheet(null)}>
             取消
           </button>
@@ -238,7 +281,9 @@ export function Editor() {
 
       {sheet === 'fit' && (
         <div className="sheet">
+          <div className="sheet-grabber" />
           <h3>图片如何放入页面</h3>
+          <div className="sheet-group">
           <button className="sheet-item" onClick={() => confirmFit('contain')}>
             适应页面（保持比例，完整显示）
           </button>
@@ -248,6 +293,7 @@ export function Editor() {
           <button className="sheet-item" onClick={() => confirmFit('original')}>
             原始尺寸
           </button>
+          </div>
           <button className="sheet-cancel" onClick={() => setSheet(null)}>
             取消
           </button>
@@ -256,7 +302,9 @@ export function Editor() {
 
       {sheet === 'blank' && (
         <div className="sheet">
+          <div className="sheet-grabber" />
           <h3>空白页方向</h3>
+          <div className="sheet-group">
           <button
             className="sheet-item"
             onClick={() => {
@@ -275,6 +323,7 @@ export function Editor() {
           >
             横向
           </button>
+          </div>
           <button className="sheet-cancel" onClick={() => setSheet(null)}>
             取消
           </button>
@@ -283,6 +332,7 @@ export function Editor() {
 
       {sheet === 'text' && (
         <div className="sheet">
+          <div className="sheet-grabber" />
           <h3>添加文字</h3>
           <textarea
             value={textValue}

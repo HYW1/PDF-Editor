@@ -6,7 +6,7 @@ export function WebToPdf() {
   return (
     <div className="subpage">
       <div className="topbar">
-        <button className="text-btn" onClick={goHome}>
+        <button className="nav-btn" onClick={goHome}>
           返回
         </button>
         <div className="file-name">网页转 PDF</div>

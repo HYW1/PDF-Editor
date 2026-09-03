@@ -31,7 +31,7 @@ export function PageSelector() {
   return (
     <div className="subpage">
       <div className="topbar">
-        <button className="ghost-btn" onClick={cancelAddPdf}>
+        <button className="nav-btn" onClick={cancelAddPdf}>
           取消
         </button>
         <div className="file-name">{pendingDoc?.name || '选择页面'}</div>
