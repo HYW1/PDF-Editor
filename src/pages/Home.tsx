@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from 'react';
 import { pickFiles } from '../core/files';
 import { usePdfSession } from '../session/PdfSession';
-import { IconChevron, IconCloud, IconDocPlus, IconEdit, IconFile, IconMerge, IconWeb } from '../ui/icons';
+import { IconChevron, IconCloud, IconDocPlus, IconEdit, IconMerge, IconWeb } from '../ui/icons';
 import { Toast } from '../ui/Toast';
 
 export function Home() {
@@ -47,7 +47,7 @@ export function Home() {
         <div className="home-bar">
           <div className="brand">
             <span className="brand-mark">
-              <IconFile size={16} />
+              <img src="/logo.png" width={32} height={32} alt="PDF小助手" />
             </span>
             <span className="kicker">轻量工具</span>
           </div>

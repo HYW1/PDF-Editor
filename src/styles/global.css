@@ -66,13 +66,17 @@ button {
 }
 
 .brand-mark {
-  display: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  place-items: center;
-  background: var(--primary);
-  color: #fff;
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.brand-mark img {
+  display: block;
+  width: 32px;
+  height: 32px;
 }
 
 .kicker {
@@ -679,7 +683,6 @@ button {
 
 @media (min-width: 900px) {
   .home { padding: 40px 32px 48px; }
-  .brand-mark { display: grid; }
   .home-title { font-size: 48px; }
   .home-subtitle { font-size: 17px; }
   .section-label { display: none; }
