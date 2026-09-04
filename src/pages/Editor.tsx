@@ -5,6 +5,7 @@ import { exportPdf } from '../core/pdf-engine';
 import { recordExport } from '../core/quota';
 import type { Annotation, FitMode } from '../core/types';
 import { usePdfSession } from '../session/PdfSession';
+import { IconTip } from '../ui/IconTip';
 import { NavBackLabel } from '../ui/NavBackLabel';
 import {
   IconBlank,
@@ -166,12 +167,28 @@ export function Editor() {
           <div className="file-name">{fileName}</div>
         </div>
         <div className="topbar-right">
-          <button className="icon-btn" disabled={!canUndo} onClick={session.undo} title="撤销">
-            <IconUndo size={20} />
-          </button>
-          <button className="icon-btn" disabled={!canRedo} onClick={session.redo} title="重做">
-            <IconRedo size={20} />
-          </button>
+          <div className="history-btns">
+            <IconTip label="撤回到上一步">
+              <button
+                className="icon-btn"
+                disabled={!canUndo}
+                onClick={session.undo}
+                aria-label="撤回到上一步"
+              >
+                <IconUndo size={22} />
+              </button>
+            </IconTip>
+            <IconTip label="重做上一步">
+              <button
+                className="icon-btn"
+                disabled={!canRedo}
+                onClick={session.redo}
+                aria-label="重做上一步"
+              >
+                <IconRedo size={22} />
+              </button>
+            </IconTip>
+          </div>
           <button className="export-btn" onClick={onExport} disabled={exporting}>
             {exporting ? '导出中' : '导出'}
           </button>

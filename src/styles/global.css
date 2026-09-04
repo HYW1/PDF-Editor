@@ -319,10 +319,77 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--primary);
   border-radius: 12px;
 }
+.icon-btn { color: var(--text); }
+.text-btn { color: var(--primary); }
 .icon-btn:disabled, .text-btn:disabled { opacity: 0.28; cursor: default; }
+
+.history-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 4px;
+}
+
+.icon-tip {
+  position: relative;
+  display: inline-flex;
+}
+
+.icon-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: rgba(17, 17, 17, 0.9);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  padding: 6px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 8px 20px rgba(17, 17, 17, 0.18);
+  z-index: 40;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.icon-tip::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  border: 6px solid transparent;
+  border-bottom-color: rgba(17, 17, 17, 0.9);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 41;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+@media (hover: hover) {
+  .icon-btn:hover:not(:disabled) {
+    color: var(--primary);
+    background: var(--primary-soft);
+  }
+  .icon-tip:hover::after,
+  .icon-tip:hover::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.icon-tip:focus-within::after,
+.icon-tip:focus-within::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
 
 .file-name {
   max-width: 42vw;
@@ -404,6 +471,7 @@ button {
 
 .tool:active { color: var(--primary); }
 .tool svg { color: var(--text); }
+.tool:active svg { color: var(--primary); }
 
 .thumbs {
   display: flex;
@@ -686,6 +754,7 @@ button {
     border-radius: 14px;
   }
   .tool:hover { background: var(--primary-soft); color: var(--primary); }
+  .tool:hover svg { color: var(--primary); }
 
   .sheet {
     left: 50%;

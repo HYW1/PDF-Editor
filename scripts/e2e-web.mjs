@@ -68,7 +68,9 @@ await page.waitForTimeout(800);
 await page.screenshot({ path: `${outDir}/editor_sample_loaded.png` });
 const editorBack = page.getByRole('button', { name: '返回' });
 await assertNavInline(editorBack, 'editor back');
-await page.screenshot({ path: `${outDir}/editor_topbar.png`, clip: { x: 0, y: 0, width: 420, height: 72 } });
+await page.locator('.topbar').screenshot({ path: `${outDir}/editor_topbar_full.png` });
+await page.locator('.history-btns').screenshot({ path: `${outDir}/undo_redo_icons.png` });
+await page.locator('.toolbar').screenshot({ path: `${outDir}/toolbar_icons.png` });
 console.log('editor loaded');
 
 await page.getByRole('button', { name: '签名' }).click();
@@ -96,6 +98,25 @@ console.log('page selector cancel aligned');
 await page.getByRole('button', { name: '删除' }).click();
 await page.getByText('1 / 2').waitFor({ timeout: 8000 });
 console.log('deleted one page');
+
+const undoBtn = page.getByRole('button', { name: '撤回到上一步' });
+if (await undoBtn.isDisabled()) {
+  throw new Error('undo should be enabled after deleting a page');
+}
+await undoBtn.hover();
+await page.waitForTimeout(200);
+const hist = await page.locator('.history-btns').boundingBox();
+if (!hist) throw new Error('history buttons missing');
+await page.screenshot({
+  path: `${outDir}/undo_hover_tooltip.png`,
+  clip: {
+    x: Math.max(0, hist.x - 48),
+    y: 0,
+    width: Math.min(340, 1280 - Math.max(0, hist.x - 48)),
+    height: 118
+  }
+});
+console.log('undo tooltip ok');
 
 await page.getByRole('button', { name: '旋转' }).click();
 await page.waitForTimeout(400);
