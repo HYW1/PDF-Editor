@@ -5,6 +5,7 @@ import { downloadBytes, pickFiles } from '../core/files';
 import { exportPdf } from '../core/pdf-engine';
 import { downloadPageImages, renderPagesToPngs } from '../core/pdf-to-images';
 import { AD_SECONDS, compressNeedsAd, formatSize, recordExport, unlockWithAd } from '../core/quota';
+import { extractPageTextLines, type TextLine } from '../core/pdf-text';
 import type { Annotation, FitMode } from '../core/types';
 import { usePdfSession } from '../session/PdfSession';
 import { IconTip } from '../ui/IconTip';
@@ -25,7 +26,7 @@ import { PageCanvas } from '../ui/PageCanvas';
 import { Toast } from '../ui/Toast';
 import { useIsDesktop } from '../ui/useMedia';
 
-type Sheet = 'add' | 'fit' | 'blank' | 'text' | 'export' | 'ad' | null;
+type Sheet = 'add' | 'fit' | 'blank' | 'text-menu' | 'text' | 'text-edit' | 'export' | 'ad' | null;
 
 export function Editor() {
   const session = usePdfSession();
@@ -42,6 +43,9 @@ export function Editor() {
   } = session;
   const [sheet, setSheet] = useState<Sheet>(null);
   const [textValue, setTextValue] = useState('');
+  const [pickingOriginal, setPickingOriginal] = useState(false);
+  const [textLines, setTextLines] = useState<TextLine[]>([]);
+  const [editingLine, setEditingLine] = useState<TextLine | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [pendingQuality, setPendingQuality] = useState<Exclude<ExportQuality, 'original'> | null>(null);
@@ -68,6 +72,35 @@ export function Editor() {
     return () => observer.disconnect();
   }, [currentPage]);
 
+  function showToast(message: string) {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 2200);
+  }
+
+  function stopPicking() {
+    setPickingOriginal(false);
+    setEditingLine(null);
+  }
+
+  useEffect(() => {
+    if (!pickingOriginal || !currentPage) {
+      setTextLines([]);
+      return;
+    }
+    let cancelled = false;
+    void extractPageTextLines(currentPage, docs).then((lines) => {
+      if (cancelled) return;
+      setTextLines(lines);
+      if (!lines.length) {
+        setPickingOriginal(false);
+        showToast('这一页没有可改的文字。扫描件或图片里的字改不了。');
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pickingOriginal, currentPage, docs]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'z') {
@@ -78,10 +111,14 @@ export function Editor() {
       if (event.key === 'Delete' || event.key === 'Backspace') {
         if (selectedAnnotationId) session.deleteAnnotation(selectedAnnotationId);
       }
+      if (event.key === 'Escape' && pickingOriginal) {
+        setPickingOriginal(false);
+        setEditingLine(null);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectedAnnotationId, session]);
+  }, [pickingOriginal, selectedAnnotationId, session]);
 
   const pageAnns = useMemo(
     () => annotations.filter((item) => currentPage && item.pageId === currentPage.id),
@@ -107,11 +144,6 @@ export function Editor() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [sheet]);
-
-  function showToast(message: string) {
-    setToast(message);
-    window.setTimeout(() => setToast(null), 2200);
-  }
 
   async function onAddImage() {
     setSheet(null);
@@ -258,7 +290,7 @@ export function Editor() {
           swipe.current = { x: event.clientX, y: event.clientY };
         }}
         onPointerUp={(event) => {
-          if (!swipe.current || isDesktop) return;
+          if (pickingOriginal || !swipe.current || isDesktop) return;
           const dx = event.clientX - swipe.current.x;
           const dy = event.clientY - swipe.current.y;
           swipe.current = null;
@@ -284,32 +316,82 @@ export function Editor() {
             <AnnotationLayer
               annotations={pageAnns}
               selectedId={selectedAnnotationId}
+              scale={previewWidth / (currentPage.width || 1)}
               onSelect={session.selectAnnotation}
               onCommit={session.updateAnnotation}
               onDelete={session.deleteAnnotation}
             />
+            {pickingOriginal && (
+              <TextHitLayer
+                lines={textLines}
+                onPick={(line) => {
+                  const existing = annotations.find(
+                    (item) =>
+                      item.type === 'replace' &&
+                      item.pageId === currentPage.id &&
+                      item.original === line.text &&
+                      Math.abs(item.x - line.x) < 0.012
+                  );
+                  setEditingLine(line);
+                  setTextValue(existing?.content || line.text);
+                  setSheet('text-edit');
+                }}
+              />
+            )}
+          </div>
+        )}
+        {pickingOriginal && (
+          <div className="pick-banner">
+            <span>点要改的那一行。扫描件改不了。</span>
+            <button type="button" onClick={stopPicking}>
+              取消
+            </button>
           </div>
         )}
       </div>
 
       <div className="toolbar">
-        <button className="tool" onClick={onDeletePage}>
+        <button
+          className="tool"
+          onClick={() => {
+            stopPicking();
+            onDeletePage();
+          }}
+        >
           <IconTrash size={22} />
           删除
         </button>
-        <button className="tool" onClick={() => setSheet('add')}>
+        <button
+          className="tool"
+          onClick={() => {
+            stopPicking();
+            setSheet('add');
+          }}
+        >
           <IconPlus size={22} />
           添加
         </button>
-        <button className="tool" onClick={session.openSignature}>
+        <button
+          className="tool"
+          onClick={() => {
+            stopPicking();
+            session.openSignature();
+          }}
+        >
           <IconSign size={22} />
           签名
         </button>
-        <button className="tool" onClick={() => setSheet('text')}>
+        <button className="tool" onClick={() => setSheet('text-menu')}>
           <IconText size={22} />
           文字
         </button>
-        <button className="tool" onClick={session.rotateCurrentPage}>
+        <button
+          className="tool"
+          onClick={() => {
+            stopPicking();
+            session.rotateCurrentPage();
+          }}
+        >
           <IconRotate size={22} />
           旋转
         </button>
@@ -338,7 +420,15 @@ export function Editor() {
         ))}
       </div>
 
-      {sheet && <div className="sheet-mask" onClick={() => setSheet(null)} />}
+      {sheet && (
+        <div
+          className="sheet-mask"
+          onClick={() => {
+            if (sheet === 'text-edit') setEditingLine(null);
+            setSheet(null);
+          }}
+        />
+      )}
 
       {sheet === 'add' && (
         <div className="sheet">
@@ -415,6 +505,54 @@ export function Editor() {
         </div>
       )}
 
+      {sheet === 'text-menu' && (
+        <div className="sheet">
+          <div className="sheet-grabber" />
+          <h3>文字</h3>
+          <div className="sheet-group">
+            <button
+              className="sheet-item sheet-item-stack"
+              onClick={() => {
+                if (!currentPage || currentPage.source.kind !== 'pdf') {
+                  setSheet(null);
+                  showToast('这一页没有可改的原文');
+                  return;
+                }
+                setSheet(null);
+                setPickingOriginal(true);
+                showToast('点要改的那一行');
+              }}
+            >
+              <span className="sheet-item-row">
+                <span>改原文</span>
+              </span>
+              <span className="sheet-item-sub">改 PDF 里已经有的字</span>
+            </button>
+            <button
+              className="sheet-item sheet-item-stack"
+              onClick={() => {
+                setPickingOriginal(false);
+                setSheet('text');
+              }}
+            >
+              <span className="sheet-item-row">
+                <span>添加新文字</span>
+              </span>
+              <span className="sheet-item-sub">在页面上新加一行</span>
+            </button>
+          </div>
+          <button
+            className="sheet-cancel"
+            onClick={() => {
+              setPickingOriginal(false);
+              setSheet(null);
+            }}
+          >
+            取消
+          </button>
+        </div>
+      )}
+
       {sheet === 'text' && (
         <div className="sheet">
           <div className="sheet-grabber" />
@@ -448,6 +586,51 @@ export function Editor() {
               }}
             >
               添加到页面
+            </button>
+          </div>
+        </div>
+      )}
+
+      {sheet === 'text-edit' && editingLine && (
+        <div className="sheet">
+          <div className="sheet-grabber" />
+          <h3>改原文</h3>
+          <textarea
+            value={textValue}
+            onChange={(event) => setTextValue(event.target.value)}
+            placeholder="改这一行的文字"
+            rows={3}
+            style={{
+              width: '100%',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: 12,
+              resize: 'vertical'
+            }}
+          />
+          <p className="sheet-note">会盖住原来的字再写上新的。扫描件改不了。</p>
+          <div className="footer-bar" style={{ border: 0, padding: '12px 0 0' }}>
+            <button
+              className="ghost-btn"
+              style={{ margin: 0 }}
+              onClick={() => {
+                setSheet(null);
+                setEditingLine(null);
+              }}
+            >
+              取消
+            </button>
+            <button
+              className="primary-btn"
+              style={{ margin: 0 }}
+              onClick={() => {
+                session.replaceOriginalText(editingLine, textValue);
+                setSheet(null);
+                setEditingLine(null);
+                setPickingOriginal(false);
+              }}
+            >
+              保存
             </button>
           </div>
         </div>
@@ -550,15 +733,46 @@ export function Editor() {
   );
 }
 
+function TextHitLayer({
+  lines,
+  onPick
+}: {
+  lines: TextLine[];
+  onPick: (line: TextLine) => void;
+}) {
+  return (
+    <>
+      {lines.map((line) => (
+        <button
+          key={line.id}
+          type="button"
+          className="text-hit"
+          aria-label={line.text}
+          style={{
+            left: `${line.x * 100}%`,
+            top: `${line.y * 100}%`,
+            width: `${line.width * 100}%`,
+            height: `${line.height * 100}%`
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => onPick(line)}
+        />
+      ))}
+    </>
+  );
+}
+
 function AnnotationLayer({
   annotations,
   selectedId,
+  scale,
   onSelect,
   onCommit,
   onDelete
 }: {
   annotations: Annotation[];
   selectedId: string | null;
+  scale: number;
   onSelect: (id: string | null) => void;
   onCommit: (id: string, patch: Partial<Annotation>) => void;
   onDelete: (id: string) => void;
@@ -640,23 +854,26 @@ function AnnotationLayer({
         return (
           <div
             key={item.id}
-            className={`ann ${selectedId === item.id ? 'selected' : ''}`}
+            className={`ann ${item.type === 'replace' ? 'replace' : ''} ${selectedId === item.id ? 'selected' : ''}`}
             style={{
               left: `${current.x * 100}%`,
               top: `${current.y * 100}%`,
               width: `${current.width * 100}%`,
               height: `${current.height * 100}%`,
-              fontSize: current.fontSize || 16,
+              fontSize:
+                item.type === 'replace' && current.fontSize
+                  ? current.fontSize * scale
+                  : current.fontSize || 16,
               color: current.color || '#111'
             }}
             onPointerDown={(event) => onPointerDown(event, item, 'move')}
             onPointerMove={(event) => onPointerMove(event, item)}
             onPointerUp={() => onPointerUp(item)}
           >
-            {item.type === 'text' ? (
-              <div className="ann-text">{current.content}</div>
-            ) : (
+            {item.type === 'signature' ? (
               <img className="ann-image" src={current.content} alt="签名" />
+            ) : (
+              <div className="ann-text">{current.content}</div>
             )}
             {selectedId === item.id && (
               <>

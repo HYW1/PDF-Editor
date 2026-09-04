@@ -39,6 +39,17 @@ assert(parsePageUrl('example.com').href === 'https://example.com/', 'bare host b
 assert(parsePageUrl('https://example.com/path').href === 'https://example.com/path', 'https url');
 assert(parsePageUrl('ftp://example.com').error === '只支持 http 或 https 网址', 'reject ftp');
 
+const { groupTextItems } = await import('../src/core/group-text-items.js');
+const grouped = groupTextItems([
+  { text: 'In', x: 0.1, y: 0.2, width: 0.05, height: 0.03, fontSize: 28 },
+  { text: 'voice', x: 0.15, y: 0.201, width: 0.12, height: 0.03, fontSize: 28 },
+  { text: 'Next', x: 0.1, y: 0.45, width: 0.1, height: 0.03, fontSize: 16 }
+]);
+assert(grouped.length === 2, `expected 2 lines, got ${grouped.length}`);
+assert(grouped[0].text === 'Invoice', `expected Invoice, got ${grouped[0].text}`);
+assert(grouped[1].text === 'Next', `expected Next, got ${grouped[1].text}`);
+console.log('text line grouping ok');
+
 const src = await PDFDocument.create();
 src.addPage([300, 400]);
 src.addPage([300, 400]);

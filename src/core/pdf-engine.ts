@@ -207,7 +207,16 @@ async function drawAnnotation(
   const width = ann.width * page.width;
   const height = ann.height * page.height;
 
-  if (ann.type === 'text') {
+  if (ann.type === 'replace' || ann.type === 'text') {
+    if (ann.type === 'replace') {
+      dest.drawRectangle({
+        x,
+        y,
+        width,
+        height,
+        color: rgb(1, 1, 1)
+      });
+    }
     const png = await renderTextPng(ann.content, width, height, ann.fontSize || 16, ann.color || '#111111');
     const image = await out.embedPng(png);
     dest.drawImage(image, { x, y, width, height });

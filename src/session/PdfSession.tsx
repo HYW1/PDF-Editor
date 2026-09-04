@@ -58,6 +58,10 @@ interface SessionApi extends SessionState {
   backToEditor: () => void;
   addSignature: (dataUrl: string) => void;
   addText: (text: string) => void;
+  replaceOriginalText: (
+    hit: { x: number; y: number; width: number; height: number; text: string; fontSize: number },
+    nextText: string
+  ) => void;
   updateAnnotation: (id: string, patch: Partial<Annotation>) => void;
   deleteAnnotation: (id: string) => void;
   selectAnnotation: (id: string | null) => void;
@@ -299,6 +303,64 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
     [annotations, commit, currentPageIndex, pages]
   );
 
+  const replaceOriginalText = useCallback(
+    (
+      hit: { x: number; y: number; width: number; height: number; text: string; fontSize: number },
+      nextText: string
+    ) => {
+      const page = pages[currentPageIndex];
+      if (!page) return;
+      const existing = annotations.find(
+        (item) =>
+          item.type === 'replace' &&
+          item.pageId === page.id &&
+          item.original === hit.text &&
+          Math.abs(item.x - hit.x) < 0.012 &&
+          Math.abs(item.y - hit.y) < 0.012
+      );
+      const trimmed = nextText.trim();
+      if (!trimmed || trimmed === hit.text) {
+        if (existing) {
+          commit(
+            pages,
+            annotations.filter((item) => item.id !== existing.id),
+            currentPageIndex
+          );
+          setSelectedAnnotationId(null);
+        }
+        return;
+      }
+      if (existing) {
+        commit(
+          pages,
+          annotations.map((item) => (item.id === existing.id ? { ...item, content: trimmed } : item)),
+          currentPageIndex
+        );
+        setSelectedAnnotationId(existing.id);
+        return;
+      }
+      const next = [
+        ...annotations,
+        {
+          id: generateId('ann'),
+          pageId: page.id,
+          type: 'replace' as const,
+          x: hit.x,
+          y: hit.y,
+          width: hit.width,
+          height: hit.height,
+          content: trimmed,
+          original: hit.text,
+          fontSize: hit.fontSize,
+          color: '#111111'
+        }
+      ];
+      commit(pages, next, currentPageIndex);
+      setSelectedAnnotationId(next[next.length - 1].id);
+    },
+    [annotations, commit, currentPageIndex, pages]
+  );
+
   const updateAnnotation = useCallback(
     (id: string, patch: Partial<Annotation>) => {
       const next = annotations.map((item) => (item.id === id ? { ...item, ...patch } : item));
@@ -367,6 +429,7 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
       backToEditor: () => setView('editor'),
       addSignature,
       addText,
+      replaceOriginalText,
       updateAnnotation,
       deleteAnnotation,
       selectAnnotation: setSelectedAnnotationId,
@@ -379,6 +442,7 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
       addImagePages,
       addSignature,
       addText,
+      replaceOriginalText,
       annotations,
       cancelAddPdf,
       confirmAddPdf,

@@ -14,7 +14,7 @@ export function cancelRender(canvas: HTMLCanvasElement): void {
   renderTasks.delete(canvas);
 }
 
-function getPdfJsDoc(doc: LoadedDoc) {
+export function getPdfJsDoc(doc: LoadedDoc) {
   let cached = docCache.get(doc.id);
   if (!cached) {
     cached = pdfjs.getDocument({ data: new Uint8Array(doc.bytes.slice(0)) }).promise;

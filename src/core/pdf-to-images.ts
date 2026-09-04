@@ -20,7 +20,8 @@ async function canvasToPng(canvas: HTMLCanvasElement): Promise<Uint8Array> {
 
 async function drawAnnotations(
   canvas: HTMLCanvasElement,
-  annotations: Annotation[]
+  annotations: Annotation[],
+  page: PageInfo
 ): Promise<void> {
   if (!annotations.length) return;
   const ctx = canvas.getContext('2d');
@@ -33,9 +34,17 @@ async function drawAnnotations(
     const y = item.y * height;
     const w = Math.max(1, item.width * width);
     const h = Math.max(1, item.height * height);
-    if (item.type === 'text') {
+    if (item.type === 'text' || item.type === 'replace') {
+      if (item.type === 'replace') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x, y, w, h);
+      }
       ctx.fillStyle = item.color || '#111111';
-      ctx.font = `${Math.max(12, (item.fontSize || 18) * (width / 400))}px sans-serif`;
+      const fontPx =
+        item.type === 'replace' && item.fontSize
+          ? Math.max(8, item.fontSize * (width / (page.width || 1)))
+          : Math.max(12, (item.fontSize || 18) * (width / 400));
+      ctx.font = `${fontPx}px "PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif`;
       ctx.textBaseline = 'top';
       ctx.fillText(item.content, x, y, w);
     } else {
@@ -63,7 +72,7 @@ export async function renderPagesToPngs(
     const canvas = document.createElement('canvas');
     await renderPageToCanvas(canvas, page, docs, 1400);
     const pageAnns = annotations.filter((item) => item.pageId === page.id);
-    await drawAnnotations(canvas, pageAnns);
+    await drawAnnotations(canvas, pageAnns, page);
     const data = await canvasToPng(canvas);
     canvas.width = 0;
     canvas.height = 0;

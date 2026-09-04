@@ -16,12 +16,13 @@ export interface PageInfo {
 export interface Annotation {
   id: string;
   pageId: string;
-  type: 'text' | 'signature';
+  type: 'text' | 'signature' | 'replace';
   x: number;
   y: number;
   width: number;
   height: number;
   content: string;
+  original?: string;
   fontSize?: number;
   color?: string;
 }

@@ -177,158 +177,12 @@ button {
   outline-offset: 2px;
 }
 
-.home-foot-block {
-  margin-top: 28px;
-  text-align: center;
-}
-
 .home-foot {
-  margin: 0;
+  margin-top: 28px;
   color: var(--text-hint);
   font-size: 12px;
   line-height: 1.5;
-}
-
-.home-tip {
-  display: inline-block;
-  margin-top: 8px;
-  padding: 2px 6px;
-  font-size: 11px;
-  line-height: 1.4;
-  color: #c3c3c8;
-  font-weight: 500;
-}
-
-.home-tip:hover,
-.home-tip:focus-visible {
-  color: var(--text-hint);
-}
-
-.tip-copy {
   text-align: center;
-}
-
-.tip-amount-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin: 8px 16px 4px;
-}
-
-.tip-currency {
-  font-size: 24px;
-  font-weight: 750;
-}
-
-.tip-input {
-  width: 148px;
-  min-height: 52px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 0 12px;
-  text-align: center;
-  font-size: 28px;
-  font-weight: 750;
-  letter-spacing: -0.03em;
-  background: #fff;
-}
-
-.tip-input:focus {
-  outline: 2px solid rgba(47, 107, 255, 0.28);
-  border-color: var(--primary);
-}
-
-.tip-presets {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 10px 12px 6px;
-}
-
-.tip-preset {
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: #fff;
-  border: 1px solid var(--border);
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.tip-preset.active {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--primary-soft);
-}
-
-.tip-sheet {
-  max-height: min(88dvh, 760px);
-  overflow-y: auto;
-}
-
-.tip-pay-tabs {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin: 12px 16px 0;
-}
-
-.tip-pay-tab {
-  min-height: 36px;
-  padding: 0 16px;
-  border-radius: 999px;
-  background: #fff;
-  border: 1px solid var(--border);
-  font-size: 14px;
-  font-weight: 650;
-  color: var(--text-secondary);
-}
-
-.tip-pay-tab.active {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--primary-soft);
-}
-
-.tip-qr {
-  width: min(220px, 70vw);
-  min-height: 180px;
-  margin: 14px auto 0;
-  padding: 12px;
-  border-radius: 16px;
-  background: #fff;
-  border: 1px solid var(--border);
-  display: grid;
-  place-items: center;
-}
-
-.tip-qr img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.tip-qr-empty {
-  margin: 0;
-  padding: 8px;
-  text-align: center;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--text-hint);
-}
-
-.ghost-btn.tip-copy-btn {
-  display: block;
-  width: calc(100% - 8px);
-  margin: 10px 4px 0;
-}
-
-.primary-btn.tip-pay-btn {
-  display: block;
-  width: calc(100% - 8px);
-  margin: 12px 4px 0;
 }
 
 .sheet-note {
@@ -555,6 +409,37 @@ button {
   padding: 5px 10px;
   font-size: 12px;
   font-weight: 650;
+  z-index: 3;
+}
+
+.pick-banner {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 24px);
+  background: rgba(17, 17, 17, 0.84);
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 8px 8px 14px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.pick-banner button {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #fff;
+  color: #111;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .toolbar {
@@ -747,6 +632,19 @@ button {
   touch-action: none;
 }
 .ann.selected { border-color: var(--primary); }
+.ann.replace {
+  background: #fff;
+  overflow: hidden;
+}
+.text-hit {
+  position: absolute;
+  border: 1.5px solid rgba(47, 107, 255, 0.55);
+  background: rgba(47, 107, 255, 0.1);
+  padding: 0;
+  border-radius: 2px;
+  z-index: 3;
+  cursor: pointer;
+}
 .ann-text { width: 100%; height: 100%; overflow: hidden; line-height: 1.3; user-select: none; }
 .ann-image { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .ann-handle {

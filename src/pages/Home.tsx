@@ -1,9 +1,7 @@
 import { useState, type DragEvent } from 'react';
-import { isAppPayUrl, readPayUrl } from '../core/pay-url';
 import { pickFiles } from '../core/files';
 import { loadPdfFile } from '../core/pdf-engine';
 import { downloadPageImages, renderPagesToPngs } from '../core/pdf-to-images';
-import { formatTipAmount, randomTipAmount, TIP_AMOUNTS, TIP_CODES, type TipPayMethod } from '../core/tips';
 import { usePdfSession } from '../session/PdfSession';
 import { IconChevron, IconEdit, IconImage, IconMerge, IconPdfToImage, IconWeb } from '../ui/icons';
 import { Toast } from '../ui/Toast';
@@ -23,13 +21,6 @@ export function Home() {
   const { openEditorFromFiles, openEditorFromImages, openWebToPdf } = usePdfSession();
   const [toast, setToast] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [tipOpen, setTipOpen] = useState(false);
-  const [tipAmount, setTipAmount] = useState('5');
-  const [tipPay, setTipPay] = useState<TipPayMethod>('wechat');
-  const [tipQrMissing, setTipQrMissing] = useState<Record<TipPayMethod, boolean>>({
-    wechat: false,
-    alipay: false
-  });
   const [busy, setBusy] = useState(false);
 
   function showToast(message: string) {
@@ -78,34 +69,6 @@ export function Home() {
     } finally {
       setBusy(false);
     }
-  }
-
-  async function goTipPay() {
-    const value = formatTipAmount(tipAmount);
-    if (!value) {
-      showToast('请先填写金额');
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch {
-      /* ignore */
-    }
-    if (tipQrMissing[tipPay]) {
-      showToast(`还没放${TIP_CODES[tipPay].label}收款码`);
-      return;
-    }
-    const url = await readPayUrl(tipPay);
-    if (!url) {
-      showToast(`还没识别到${TIP_CODES[tipPay].label}收款码`);
-      return;
-    }
-    const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
-    if (!mobile && isAppPayUrl(url)) {
-      showToast('请用手机点去打赏支付，电脑上请扫码');
-      return;
-    }
-    window.location.href = url;
   }
 
   async function onDrop(event: DragEvent) {
@@ -230,90 +193,8 @@ export function Home() {
           </div>
         </div>
 
-        <div className="home-foot-block">
-          <p className="home-foot">功能都免费。文件不上传，改完再导出。</p>
-          <button
-            className="home-tip"
-            onClick={() => {
-              setTipAmount(randomTipAmount());
-              setTipPay('wechat');
-              setTipQrMissing({ wechat: false, alipay: false });
-              setTipOpen(true);
-            }}
-          >
-            随机打赏
-          </button>
-        </div>
+        <p className="home-foot">功能都免费。文件不上传，改完再导出。</p>
       </div>
-      {tipOpen && (
-        <>
-          <div className="sheet-mask" onClick={() => setTipOpen(false)} />
-          <div className="sheet tip-sheet">
-            <div className="sheet-grabber" />
-            <h3>随机打赏</h3>
-            <p className="sheet-note tip-copy">功能都免费，完全自愿。金额可以改。个人收款码扫完后要自己填金额。</p>
-            <div className="tip-amount-wrap">
-              <span className="tip-currency">¥</span>
-              <input
-                id="tip-amount"
-                className="tip-input"
-                inputMode="decimal"
-                autoComplete="off"
-                aria-label="打赏金额"
-                value={tipAmount}
-                onChange={(event) => {
-                  const next = event.target.value.replace(/[^\d.]/g, '');
-                  const parts = next.split('.');
-                  setTipAmount(parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : next);
-                }}
-              />
-            </div>
-            <div className="tip-presets">
-              {TIP_AMOUNTS.map((amount) => (
-                <button
-                  key={amount}
-                  type="button"
-                  className={`tip-preset ${tipAmount === String(amount) ? 'active' : ''}`}
-                  onClick={() => setTipAmount(String(amount))}
-                >
-                  ¥{amount}
-                </button>
-              ))}
-            </div>
-            <div className="tip-pay-tabs" role="tablist" aria-label="收款方式">
-              {(Object.keys(TIP_CODES) as TipPayMethod[]).map((method) => (
-                <button
-                  key={method}
-                  type="button"
-                  role="tab"
-                  aria-selected={tipPay === method}
-                  className={`tip-pay-tab ${tipPay === method ? 'active' : ''}`}
-                  onClick={() => setTipPay(method)}
-                >
-                  {TIP_CODES[method].label}
-                </button>
-              ))}
-            </div>
-            <div className="tip-qr">
-              {tipQrMissing[tipPay] ? (
-                <p className="tip-qr-empty">{TIP_CODES[tipPay].hint}</p>
-              ) : (
-                <img
-                  src={TIP_CODES[tipPay].src}
-                  alt={`${TIP_CODES[tipPay].label}收款码`}
-                  onError={() => setTipQrMissing((prev) => ({ ...prev, [tipPay]: true }))}
-                />
-              )}
-            </div>
-            <button className="primary-btn tip-pay-btn" onClick={() => void goTipPay()}>
-              去打赏支付
-            </button>
-            <button className="sheet-cancel" onClick={() => setTipOpen(false)}>
-              取消
-            </button>
-          </div>
-        </>
-      )}
       <Toast message={toast} />
     </div>
   );

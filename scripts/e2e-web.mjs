@@ -45,20 +45,12 @@ await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
 if (await page.getByRole('button', { name: '打开示例 PDF' }).count()) {
   throw new Error('sample PDF button should be removed from home');
 }
-await page.getByRole('button', { name: '随机打赏' }).waitFor();
-await page.screenshot({ path: `${outDir}/home_desktop.png`, fullPage: true });
+if (await page.getByRole('button', { name: '随机打赏' }).count()) {
+  throw new Error('tip entry should be removed from home');
+}
 await page.getByRole('button', { name: '图片转 PDF' }).waitFor();
 await page.getByRole('button', { name: 'PDF 转图片' }).waitFor();
-await page.getByRole('button', { name: '随机打赏' }).click();
-await page.getByRole('heading', { name: '随机打赏' }).waitFor();
-await page.getByLabel('打赏金额').fill('12.5');
-await page.getByRole('tab', { name: '微信' }).waitFor();
-await page.getByRole('tab', { name: '支付宝' }).click();
-await page.getByRole('tab', { name: '微信' }).click();
-await page.getByRole('button', { name: '去打赏支付' }).waitFor();
-await page.screenshot({ path: `${outDir}/home_tip_sheet.png` });
-await page.getByRole('button', { name: '取消' }).click();
-await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
+await page.screenshot({ path: `${outDir}/home_desktop.png`, fullPage: true });
 console.log('home ok');
 
 await page.getByRole('button', { name: '网页转 PDF' }).click();
@@ -88,6 +80,29 @@ await page.locator('.topbar').screenshot({ path: `${outDir}/editor_topbar_full.p
 await page.locator('.history-btns').screenshot({ path: `${outDir}/undo_redo_icons.png` });
 await page.locator('.toolbar').screenshot({ path: `${outDir}/toolbar_icons.png` });
 console.log('editor loaded');
+
+await page.getByRole('button', { name: '文字' }).click();
+await page.getByRole('button', { name: '改原文' }).click();
+await page.locator('.text-hit').first().waitFor({ timeout: 15000 });
+const hitLabels = await page.locator('.text-hit').evaluateAll((els) =>
+  els.map((el) => el.getAttribute('aria-label') || '')
+);
+console.log('text hits', hitLabels);
+const invoiceHit = page.getByRole('button', { name: /Invoice draft/ });
+if (await invoiceHit.count()) {
+  await invoiceHit.click();
+} else {
+  const fallback = page.getByRole('button', { name: /^Invoice/ });
+  if (!(await fallback.count())) {
+    throw new Error(`missing Invoice text hit, got ${JSON.stringify(hitLabels)}`);
+  }
+  await fallback.first().click();
+}
+await page.getByPlaceholder('改这一行的文字').fill('Invoice edited');
+await page.getByRole('button', { name: '保存' }).click();
+await page.getByText('Invoice edited').waitFor();
+await page.screenshot({ path: `${outDir}/replace_original_text.png` });
+console.log('replaced original text');
 
 await page.getByRole('button', { name: '签名' }).click();
 await page.getByText('手写签名', { exact: true }).waitFor();
@@ -145,6 +160,7 @@ await page.getByText('2 / 3').waitFor({ timeout: 8000 });
 console.log('added blank page');
 
 await page.getByRole('button', { name: '文字' }).click();
+await page.getByRole('button', { name: '添加新文字' }).click();
 await page.getByPlaceholder('输入要加到这一页的文字').fill('本地导出测试');
 await page.getByRole('button', { name: '添加到页面' }).click();
 await page.getByText('本地导出测试').waitFor();
