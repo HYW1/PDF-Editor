@@ -24,17 +24,6 @@ export function Home() {
     }
   }
 
-  async function openSample() {
-    try {
-      const res = await fetch('./sample.pdf');
-      const blob = await res.blob();
-      const file = new File([blob], 'sample.pdf', { type: 'application/pdf' });
-      await openEditorFromFiles([file]);
-    } catch {
-      showToast('示例文件加载失败');
-    }
-  }
-
   async function onDrop(event: DragEvent) {
     event.preventDefault();
     setDragOver(false);
@@ -62,10 +51,6 @@ export function Home() {
             </span>
             <span className="kicker">轻量工具</span>
           </div>
-          <button className="sample-link" onClick={openSample}>
-            <IconFile size={16} />
-            打开示例 PDF
-          </button>
         </div>
 
         <header className="home-heading">

@@ -5,8 +5,8 @@ import { exportPdf } from '../core/pdf-engine';
 import { recordExport } from '../core/quota';
 import type { Annotation, FitMode } from '../core/types';
 import { usePdfSession } from '../session/PdfSession';
+import { NavBackLabel } from '../ui/NavBackLabel';
 import {
-  IconBack,
   IconBlank,
   IconFile,
   IconImage,
@@ -161,8 +161,7 @@ export function Editor() {
       <div className="topbar">
         <div className="topbar-left">
           <button className="nav-btn" onClick={session.goHome}>
-            <IconBack size={20} />
-            返回
+            <NavBackLabel>返回</NavBackLabel>
           </button>
           <div className="file-name">{fileName}</div>
         </div>

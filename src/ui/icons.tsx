@@ -51,7 +51,7 @@ export function IconWeb(props: IconProps) {
 export function IconBack(props: IconProps) {
   return (
     <Svg {...props}>
-      <path d="M15 5l-7 7 7 7" />
+      <path d="M14 6L8 12l6 6" />
     </Svg>
   );
 }

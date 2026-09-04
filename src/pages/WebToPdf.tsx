@@ -1,4 +1,5 @@
 import { usePdfSession } from '../session/PdfSession';
+import { NavBackLabel } from '../ui/NavBackLabel';
 
 export function WebToPdf() {
   const { goHome } = usePdfSession();
@@ -7,7 +8,7 @@ export function WebToPdf() {
     <div className="subpage">
       <div className="topbar">
         <button className="nav-btn" onClick={goHome}>
-          返回
+          <NavBackLabel>返回</NavBackLabel>
         </button>
         <div className="file-name">网页转 PDF</div>
         <span />

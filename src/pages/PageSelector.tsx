@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { usePdfSession } from '../session/PdfSession';
+import { NavBackLabel } from '../ui/NavBackLabel';
 import { PageCanvas } from '../ui/PageCanvas';
 
 export function PageSelector() {
@@ -32,7 +33,7 @@ export function PageSelector() {
     <div className="subpage">
       <div className="topbar">
         <button className="nav-btn" onClick={cancelAddPdf}>
-          取消
+          <NavBackLabel>取消</NavBackLabel>
         </button>
         <div className="file-name">{pendingDoc?.name || '选择页面'}</div>
         <button className="text-btn" onClick={toggleAll}>

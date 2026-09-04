@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePdfSession } from '../session/PdfSession';
-import { IconBack } from '../ui/icons';
+import { NavBackLabel } from '../ui/NavBackLabel';
 
 export function Signature() {
   const { addSignature, backToEditor } = usePdfSession();
@@ -78,8 +78,7 @@ export function Signature() {
     <div className="subpage">
       <div className="topbar">
         <button className="nav-btn" onClick={backToEditor}>
-          <IconBack size={20} />
-          取消
+          <NavBackLabel>取消</NavBackLabel>
         </button>
         <div className="file-name">手写签名</div>
         <button className="text-btn" onClick={confirm} disabled={!hasDrawn}>
