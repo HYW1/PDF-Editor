@@ -86,7 +86,7 @@ button {
   color: var(--text-hint);
   font-size: 14px;
   line-height: 1.55;
-  max-width: 22em;
+  max-width: 28em;
 }
 
 .home-features {

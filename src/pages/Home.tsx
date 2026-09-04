@@ -51,7 +51,7 @@ export function Home() {
             </span>
             <h1 className="home-title">PDF小助手</h1>
           </div>
-          <p className="home-subtitle">打开就能改，文件不会离开这台设备。</p>
+          <p className="home-subtitle">不用装软件，打开就能删页、合并、签名。</p>
         </header>
 
         <div className="home-features">
@@ -118,7 +118,7 @@ export function Home() {
           <div className="drop-copy desktop-only">把 PDF 拖到这里，也可以点这里选择</div>
         </div>
 
-        <p className="home-foot">文件只在这台设备上处理，不会上传。</p>
+        <p className="home-foot">文件不上传，改完再导出。</p>
       </div>
       <Toast message={toast} />
     </div>
