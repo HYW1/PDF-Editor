@@ -51,7 +51,6 @@ export function Home() {
             </span>
             <h1 className="home-title">PDF小助手</h1>
           </div>
-          <p className="home-subtitle">不用装软件，打开就能删页、合并、签名。</p>
         </header>
 
         <div className="home-features">

@@ -1,7 +1,6 @@
 <view class="page">
   <view class="header">
     <view class="title">PDF小助手</view>
-    <view class="subtitle">不用装软件，打开就能删页、合并、签名</view>
   </view>
 
   <view class="cards">

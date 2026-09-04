@@ -81,14 +81,6 @@ button {
   line-height: 1.15;
 }
 
-.home-subtitle {
-  margin: 10px 0 0;
-  color: var(--text-hint);
-  font-size: 14px;
-  line-height: 1.55;
-  max-width: 28em;
-}
-
 .home-features {
   display: flex;
   flex-direction: column;
@@ -680,11 +672,6 @@ button {
   .brand-mark, .brand-mark img { width: 48px; height: 48px; }
   .home-heading { margin-bottom: 48px; }
   .home-title { font-size: 40px; letter-spacing: -0.045em; }
-  .home-subtitle {
-    margin: 12px 0 0;
-    font-size: 16px;
-    max-width: 20em;
-  }
   .section-label { display: none; }
   .home-features {
     display: grid;
