@@ -82,11 +82,11 @@ button {
 }
 
 .home-subtitle {
-  margin: 8px 0 0 46px;
+  margin: 10px 0 0;
   color: var(--text-hint);
   font-size: 14px;
   line-height: 1.55;
-  max-width: 26em;
+  max-width: 22em;
 }
 
 .home-features {
@@ -105,7 +105,6 @@ button {
   color: #fff;
   border-radius: 24px;
   padding: 20px 18px;
-  box-shadow: 0 16px 36px rgba(47, 107, 255, 0.26);
 }
 
 .hero:active { transform: scale(0.985); }
@@ -152,7 +151,7 @@ button {
   background: var(--card);
   border-radius: 22px;
   padding: 16px;
-  box-shadow: 0 8px 24px rgba(17, 17, 17, 0.04);
+  border: 1px solid var(--border);
 }
 
 .action-row:active { transform: scale(0.985); }
@@ -682,9 +681,9 @@ button {
   .home-heading { margin-bottom: 48px; }
   .home-title { font-size: 40px; letter-spacing: -0.045em; }
   .home-subtitle {
-    margin: 12px 0 0 62px;
+    margin: 12px 0 0;
     font-size: 16px;
-    max-width: 24em;
+    max-width: 20em;
   }
   .section-label { display: none; }
   .home-features {
@@ -710,7 +709,7 @@ button {
   }
   .tool-card-title { font-size: 18px; }
   .tool-card-desc { margin-top: 8px; font-size: 14px; }
-  .action-row:hover { box-shadow: var(--shadow); }
+  .action-row:hover { background: #fafafa; border-color: rgba(47, 107, 255, 0.18); }
   .action-row .row-chevron { display: none; }
   .home-drop { min-height: 168px; margin-top: 40px; }
   .drop-copy { font-size: 15px; }

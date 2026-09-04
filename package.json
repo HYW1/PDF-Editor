@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "PDF小助手 — 改页、合并、签名，都在这台设备上完成",
+  "description": "PDF小助手 — 打开就能改，文件不会离开这台设备",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc --noEmit && vite build",

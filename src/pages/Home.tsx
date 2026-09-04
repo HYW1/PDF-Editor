@@ -51,7 +51,7 @@ export function Home() {
             </span>
             <h1 className="home-title">PDF小助手</h1>
           </div>
-          <p className="home-subtitle">改页、合并、签名，都在这台设备上完成。</p>
+          <p className="home-subtitle">打开就能改，文件不会离开这台设备。</p>
         </header>
 
         <div className="home-features">
