@@ -304,6 +304,7 @@ button {
   width: 10px;
   height: 16px;
   flex: 0 0 auto;
+  transform: translateY(1px);
 }
 
 .nav-back-text {
