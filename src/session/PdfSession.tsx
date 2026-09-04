@@ -330,10 +330,14 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
         }
         return;
       }
+      const lengthRatio = [...trimmed].length / Math.max(1, [...hit.text].length);
+      const width = Math.min(1 - hit.x, hit.width * Math.max(1.12, lengthRatio * 1.08));
       if (existing) {
         commit(
           pages,
-          annotations.map((item) => (item.id === existing.id ? { ...item, content: trimmed } : item)),
+          annotations.map((item) =>
+            item.id === existing.id ? { ...item, content: trimmed, width } : item
+          ),
           currentPageIndex
         );
         setSelectedAnnotationId(existing.id);
@@ -347,7 +351,7 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
           type: 'replace' as const,
           x: hit.x,
           y: hit.y,
-          width: hit.width,
+          width,
           height: hit.height,
           content: trimmed,
           original: hit.text,

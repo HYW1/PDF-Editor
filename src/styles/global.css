@@ -635,6 +635,13 @@ button {
 .ann.replace {
   background: #fff;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+.ann.replace .ann-text {
+  white-space: nowrap;
+  line-height: 1.1;
+  overflow: hidden;
 }
 .text-hit {
   position: absolute;

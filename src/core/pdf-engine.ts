@@ -217,7 +217,14 @@ async function drawAnnotation(
         color: rgb(1, 1, 1)
       });
     }
-    const png = await renderTextPng(ann.content, width, height, ann.fontSize || 16, ann.color || '#111111');
+    const png = await renderTextPng(
+      ann.content,
+      width,
+      height,
+      ann.fontSize || 16,
+      ann.color || '#111111',
+      ann.type === 'replace'
+    );
     const image = await out.embedPng(png);
     dest.drawImage(image, { x, y, width, height });
     return;
@@ -233,7 +240,8 @@ function renderTextPng(
   widthPt: number,
   heightPt: number,
   fontSize: number,
-  color: string
+  color: string,
+  singleLine = false
 ): Promise<Uint8Array> {
   if (typeof document === 'undefined') {
     throw new Error('文字导出需要在浏览器中进行');
@@ -248,8 +256,13 @@ function renderTextPng(
   ctx.clearRect(0, 0, widthPt, heightPt);
   ctx.fillStyle = color;
   ctx.font = `${fontSize}px "PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif`;
-  ctx.textBaseline = 'top';
-  wrapText(ctx, text, 0, 2, widthPt, fontSize * 1.3);
+  if (singleLine) {
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 0, heightPt / 2, widthPt);
+  } else {
+    ctx.textBaseline = 'top';
+    wrapText(ctx, text, 0, 2, widthPt, fontSize * 1.3);
+  }
   return canvasToPng(canvas);
 }
 
