@@ -2,16 +2,12 @@ import { useState, type DragEvent } from 'react';
 import { pickFiles } from '../core/files';
 import { loadPdfFile } from '../core/pdf-engine';
 import { downloadPageImages, renderPagesToPngs } from '../core/pdf-to-images';
+import { formatTipAmount, randomTipAmount, TIP_AMOUNTS, TIP_CODES, type TipPayMethod } from '../core/tips';
 import { usePdfSession } from '../session/PdfSession';
 import { IconChevron, IconEdit, IconImage, IconMerge, IconPdfToImage, IconWeb } from '../ui/icons';
 import { Toast } from '../ui/Toast';
 
-const TIP_AMOUNTS = [2, 3, 5, 6.6, 8.8, 16.8];
 const IMAGE_ACCEPT = 'image/png,image/jpeg,image/jpg,image/webp,image/bmp,image/gif';
-
-function randomTipAmount() {
-  return String(TIP_AMOUNTS[Math.floor(Math.random() * TIP_AMOUNTS.length)]);
-}
 
 function isPdf(file: File) {
   return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -28,6 +24,11 @@ export function Home() {
   const [dragOver, setDragOver] = useState(false);
   const [tipOpen, setTipOpen] = useState(false);
   const [tipAmount, setTipAmount] = useState('5');
+  const [tipPay, setTipPay] = useState<TipPayMethod>('wechat');
+  const [tipQrMissing, setTipQrMissing] = useState<Record<TipPayMethod, boolean>>({
+    wechat: false,
+    alipay: false
+  });
   const [busy, setBusy] = useState(false);
 
   function showToast(message: string) {
@@ -206,6 +207,8 @@ export function Home() {
             className="home-tip"
             onClick={() => {
               setTipAmount(randomTipAmount());
+              setTipPay('wechat');
+              setTipQrMissing({ wechat: false, alipay: false });
               setTipOpen(true);
             }}
           >
@@ -216,10 +219,10 @@ export function Home() {
       {tipOpen && (
         <>
           <div className="sheet-mask" onClick={() => setTipOpen(false)} />
-          <div className="sheet">
+          <div className="sheet tip-sheet">
             <div className="sheet-grabber" />
             <h3>随机打赏</h3>
-            <p className="sheet-note tip-copy">功能都免费，完全自愿。金额可以改，也可以用手输。</p>
+            <p className="sheet-note tip-copy">功能都免费，完全自愿。金额可以改。个人收款码扫完后要自己填金额。</p>
             <div className="tip-amount-wrap">
               <span className="tip-currency">¥</span>
               <input
@@ -248,7 +251,49 @@ export function Home() {
                 </button>
               ))}
             </div>
-            <p className="sheet-note tip-copy">收款码还没放上来，先记下这份心意。</p>
+            <div className="tip-pay-tabs" role="tablist" aria-label="收款方式">
+              {(Object.keys(TIP_CODES) as TipPayMethod[]).map((method) => (
+                <button
+                  key={method}
+                  type="button"
+                  role="tab"
+                  aria-selected={tipPay === method}
+                  className={`tip-pay-tab ${tipPay === method ? 'active' : ''}`}
+                  onClick={() => setTipPay(method)}
+                >
+                  {TIP_CODES[method].label}
+                </button>
+              ))}
+            </div>
+            <div className="tip-qr">
+              {tipQrMissing[tipPay] ? (
+                <p className="tip-qr-empty">{TIP_CODES[tipPay].hint}</p>
+              ) : (
+                <img
+                  src={TIP_CODES[tipPay].src}
+                  alt={`${TIP_CODES[tipPay].label}收款码`}
+                  onError={() => setTipQrMissing((prev) => ({ ...prev, [tipPay]: true }))}
+                />
+              )}
+            </div>
+            <button
+              className="ghost-btn tip-copy-btn"
+              onClick={async () => {
+                const value = formatTipAmount(tipAmount);
+                if (!value) {
+                  showToast('请先填写金额');
+                  return;
+                }
+                try {
+                  await navigator.clipboard.writeText(value);
+                  showToast(`已复制 ¥${value}，扫码后请填这个金额`);
+                } catch {
+                  showToast(`请扫码后输入 ¥${value}`);
+                }
+              }}
+            >
+              复制金额
+            </button>
             <button className="sheet-cancel" onClick={() => setTipOpen(false)}>
               关闭
             </button>
