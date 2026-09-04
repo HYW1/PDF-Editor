@@ -62,7 +62,7 @@ export function WebToPdf() {
     setProgressText('正在准备');
     setEta('开始了');
     try {
-      const res = await fetch(new URL('api/web-to-pdf', window.location.href), {
+      const res = await fetch(`${window.location.origin}/api/web-to-pdf`, {
         method: 'POST',
         headers: {
           Accept: 'application/x-ndjson',
@@ -76,7 +76,7 @@ export function WebToPdf() {
           const data = await res.json().catch(() => null);
           throw new Error(data?.error || '生成失败');
         }
-        throw new Error('当前没有网页转 PDF 服务，请用 npm run dev 在本机启动');
+        throw new Error('当前没有网页转 PDF 服务');
       }
       if (type.includes('application/pdf')) {
         setProgress(92);
@@ -180,7 +180,7 @@ export function WebToPdf() {
             </div>
           </div>
         )}
-        <p className="web-note">本机打开网页后生成 PDF，不会把文件传到别处。需要登录的页面可能转不全。</p>
+        <p className="web-note">会在服务器里打开这个网址再生成 PDF，不会保存你的文件。需要登录或验证码的页面可能转不全。</p>
       </div>
       <Toast message={toast} />
     </div>

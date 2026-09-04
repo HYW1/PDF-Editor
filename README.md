@@ -16,7 +16,7 @@ npm run build
 npm run preview
 ```
 
-除「网页转 PDF」外，静态资源可部署到任意静态托管（Nginx、Cloudflare Pages、GitHub Pages、对象存储）。网页转 PDF 要本机 Node 服务（`npm run dev` 或 `npm run preview`）和 Chrome / Chromium，用来打开网址再生成 PDF。没有 Chrome 时先执行 `npx playwright install chromium`。
+除「网页转 PDF」外，静态资源可部署到任意静态托管。网页转 PDF 在 Vercel 上走服务端 Chromium；本机 `npm run dev` 会用本机 Chrome。需要登录或验证码的页面可能转不全。
 
 ## 已实现（真实 PDF 操作）
 
@@ -32,7 +32,7 @@ npm run preview
 - 撤销 / 重做
 - 导出：直接导出免费；高 / 中 / 低画质压缩需看完广告，选项上会写预估体积
 - 不限制上传文件大小（设备内存不够时会提示）
-- 网页转 PDF：本机用 Chromium 打开网址后生成，带进度，再进入编辑
+- 网页转 PDF：服务端用 Chromium 打开网址后生成，带进度，再进入编辑。需要登录或验证码的页面可能转不全
 - 图片转 PDF、PDF 转图片（PNG；多页打成 zip）
 
 ## 尚未实现

@@ -1,5 +1,5 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
-import { parsePageUrl } from '../server/web-to-pdf.mjs';
+import { parsePageUrl } from '../server/parse-page-url.mjs';
 
 function fitImage(imageW, imageH, pageW, pageH, mode) {
   if (mode === 'original') {
@@ -38,6 +38,13 @@ assert(parsePageUrl('').error === '请输入网址', 'empty url');
 assert(parsePageUrl('example.com').href === 'https://example.com/', 'bare host becomes https');
 assert(parsePageUrl('https://example.com/path').href === 'https://example.com/path', 'https url');
 assert(parsePageUrl('ftp://example.com').error === '只支持 http 或 https 网址', 'reject ftp');
+assert(parsePageUrl('http://localhost/x').error === '不能转换内网地址', 'reject localhost');
+assert(parsePageUrl('http://127.0.0.1/x').error === '不能转换内网地址', 'reject loopback');
+assert(parsePageUrl('http://192.168.0.8/x').error === '不能转换内网地址', 'reject lan');
+assert(
+  parsePageUrl('http://localhost/x', { allowPrivate: true }).href === 'http://localhost/x',
+  'allow localhost when asked'
+);
 
 const { groupTextItems } = await import('../src/core/group-text-items.js');
 const grouped = groupTextItems([
