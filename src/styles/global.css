@@ -293,20 +293,23 @@ button {
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
+  height: 44px;
   white-space: nowrap;
   line-height: 1;
 }
 
-.nav-back svg {
+.nav-chevron-icon {
   display: block;
+  width: 12px;
+  height: 20px;
   flex: 0 0 auto;
 }
 
 .nav-back-text {
   display: block;
-  line-height: 1;
-  padding-bottom: 1px;
+  font-size: 16px;
+  line-height: 20px;
 }
 
 .icon-btn, .text-btn {

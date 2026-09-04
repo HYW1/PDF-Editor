@@ -5,7 +5,7 @@ import { PDFDocument } from 'pdf-lib';
 async function assertNavInline(locator, label) {
   const metrics = await locator.evaluate((el) => {
     const row = el.querySelector('.nav-back');
-    const icon = row?.querySelector('svg');
+    const icon = row?.querySelector('.nav-chevron-icon, svg');
     const text = row?.querySelector('.nav-back-text');
     if (!row || !icon || !text) return { error: 'missing nodes' };
     const ib = icon.getBoundingClientRect();
@@ -87,9 +87,9 @@ const [addChooser] = await Promise.all([
 ]);
 await addChooser.setFiles('public/sample.pdf');
 await page.getByRole('button', { name: '全选' }).waitFor({ timeout: 15000 });
-await assertNavInline(page.getByRole('button', { name: '取消' }), 'page selector cancel');
+await assertNavInline(page.getByRole('button', { name: '取消', exact: true }), 'page selector cancel');
 await page.screenshot({ path: `${outDir}/page_selector_topbar.png`, clip: { x: 0, y: 0, width: 420, height: 72 } });
-await page.getByRole('button', { name: '取消' }).click();
+await page.getByRole('button', { name: '取消', exact: true }).click();
 await page.getByText('1 / 3').waitFor();
 console.log('page selector cancel aligned');
 
