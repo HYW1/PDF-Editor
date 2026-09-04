@@ -27,6 +27,9 @@ async function assertNavInline(locator, label) {
   }
 }
 
+const outDir = '/opt/cursor/artifacts';
+await mkdir(outDir, { recursive: true });
+
 const browser = await chromium.launch({
   channel: 'chrome',
   headless: true
