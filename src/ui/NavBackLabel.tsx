@@ -1,9 +1,9 @@
 export function NavBackLabel({ children }: { children: string }) {
   return (
     <span className="nav-back">
-      <svg className="nav-chevron-icon" viewBox="0 0 12 20" aria-hidden="true">
+      <svg className="nav-chevron-icon" viewBox="0 0 10 16" aria-hidden="true">
         <path
-          d="M9.5 2.5L2.5 10l7 7.5"
+          d="M8 2L2.5 8 8 14"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
