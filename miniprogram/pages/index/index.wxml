@@ -26,14 +26,13 @@
       <view class="card-arrow">›</view>
     </view>
 
-    <view class="card card-disabled" bindtap="onWebToPDF">
+    <view class="card" bindtap="onWebToPDF">
       <view class="card-icon">
         <view class="icon-web">⊕</view>
       </view>
       <view class="card-body">
         <view class="card-title">网页转 PDF</view>
         <view class="card-desc">把网页保存成 PDF</view>
-        <view class="card-badge">即将推出</view>
       </view>
       <view class="card-arrow">›</view>
     </view>

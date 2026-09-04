@@ -94,14 +94,13 @@ export function Home() {
                 </span>
               </button>
 
-              <button className="action-row dim" onClick={openWebToPdf}>
+              <button className="action-row" onClick={openWebToPdf}>
                 <div className="feature-icon">
                   <IconWeb size={24} />
                 </div>
                 <div className="action-body">
                   <div className="tool-card-title">网页转 PDF</div>
                   <div className="tool-card-desc">把网页保存成 PDF。</div>
-                  <span className="badge">即将推出</span>
                 </div>
                 <span className="row-chevron">
                   <IconChevron size={18} />

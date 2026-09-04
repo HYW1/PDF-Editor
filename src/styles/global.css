@@ -641,6 +641,47 @@ button {
   margin: 20px 0 0;
 }
 
+.web-form {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 28px 20px;
+}
+
+.web-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.web-input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0 14px;
+  background: #fff;
+}
+
+.web-input:focus {
+  outline: 2px solid rgba(47, 107, 255, 0.28);
+  border-color: var(--primary);
+}
+
+.web-submit {
+  display: block;
+  width: 100%;
+  margin: 16px 0 0;
+}
+
+.web-note {
+  margin: 14px 0 0;
+  color: var(--text-hint);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .hint-desktop { display: none; }
 
 @media (min-width: 900px) {

@@ -16,11 +16,11 @@ npm run build
 npm run preview
 ```
 
-静态资源可部署到任意静态托管（Nginx、Cloudflare Pages、GitHub Pages、对象存储）。
+除「网页转 PDF」外，静态资源可部署到任意静态托管（Nginx、Cloudflare Pages、GitHub Pages、对象存储）。网页转 PDF 要本机 Node 服务（`npm run dev` 或 `npm run preview`）和 Chrome / Chromium，用来打开网址再生成 PDF。没有 Chrome 时先执行 `npx playwright install chromium`。
 
 ## 已实现（真实 PDF 操作）
 
-- 上传 / 拖入 PDF
+- 选择 / 拖入 PDF
 - 合并多个 PDF
 - 页面预览（pdf.js 真实渲染）
 - 删除、旋转、拖拽调整顺序
@@ -32,9 +32,10 @@ npm run preview
 - 导出：直接导出，或高 / 中 / 低画质压缩
 - 不限制上传文件大小（设备内存不够时会提示）
 
+- 网页转 PDF：本机用 Chromium 打开网址后生成，再进入编辑
+
 ## 尚未实现
 
-- 网页转 PDF：需要后端 Playwright / Chromium，前端不能完整渲染任意网页
 - 修改 PDF 里原有文字
 - 广告解锁 / 付费：只预留了 `src/core/quota.ts` 接口，第一阶段不接广告
 

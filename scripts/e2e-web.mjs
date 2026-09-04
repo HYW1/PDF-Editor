@@ -49,14 +49,17 @@ await page.screenshot({ path: `${outDir}/home_desktop.png`, fullPage: true });
 console.log('home ok');
 
 await page.getByRole('button', { name: '网页转 PDF' }).click();
-await page.getByRole('heading', { name: '这个功能还在准备' }).waitFor();
+await page.getByLabel('网址').waitFor();
 const webBack = page.getByRole('button', { name: '返回', exact: true });
 await assertNavInline(webBack, 'web-to-pdf back');
-await page.screenshot({ path: `${outDir}/web_to_pdf_topbar.png`, clip: { x: 0, y: 0, width: 420, height: 72 } });
-await page.screenshot({ path: `${outDir}/web_to_pdf_honest.png` });
-await webBack.click();
+await page.screenshot({ path: `${outDir}/web_to_pdf_form.png` });
+await page.getByLabel('网址').fill('http://localhost:5173/web-fixture.html');
+await page.getByRole('button', { name: '生成 PDF' }).click();
+await page.getByText(/1 \/ \d+/).waitFor({ timeout: 40000 });
+await page.screenshot({ path: `${outDir}/web_to_pdf_editor.png` });
+await page.getByRole('button', { name: '返回', exact: true }).click();
 await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
-console.log('web-to-pdf back aligned');
+console.log('web-to-pdf converted');
 
 const [fileChooser] = await Promise.all([
   page.waitForEvent('filechooser'),
@@ -174,12 +177,11 @@ await mobile.screenshot({ path: `${outDir}/home_mobile.png`, fullPage: true });
 console.log('mobile home ok');
 
 await mobile.getByRole('button', { name: '网页转 PDF' }).click();
-await mobile.getByRole('heading', { name: '这个功能还在准备' }).waitFor();
+await mobile.getByLabel('网址').waitFor();
 const mobileBack = mobile.getByRole('button', { name: '返回', exact: true });
 await assertNavInline(mobileBack, 'mobile web-to-pdf back');
-await mobile.screenshot({ path: `${outDir}/web_to_pdf_mobile_topbar.png`, clip: { x: 0, y: 0, width: 390, height: 80 } });
-await mobile.screenshot({ path: `${outDir}/web_to_pdf_honest.png` });
-console.log('web-to-pdf honest page ok');
+await mobile.screenshot({ path: `${outDir}/web_to_pdf_mobile.png` });
+console.log('web-to-pdf mobile form ok');
 
 await browser.close();
 console.log('e2e passed');

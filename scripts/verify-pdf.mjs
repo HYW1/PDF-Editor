@@ -1,4 +1,5 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
+import { parsePageUrl } from '../server/web-to-pdf.mjs';
 
 function fitImage(imageW, imageH, pageW, pageH, mode) {
   if (mode === 'original') {
@@ -32,6 +33,11 @@ assert(cover.height === 100 && cover.width === 200, 'cover should fill and keep 
 assert(cover.x === -50 && cover.y === 0, 'cover may overflow');
 
 assert(movePage(['a', 'b', 'c'], 0, 2).join('') === 'bca', 'reorder pages');
+
+assert(parsePageUrl('').error === '请输入网址', 'empty url');
+assert(parsePageUrl('example.com').href === 'https://example.com/', 'bare host becomes https');
+assert(parsePageUrl('https://example.com/path').href === 'https://example.com/path', 'https url');
+assert(parsePageUrl('ftp://example.com').error === '只支持 http 或 https 网址', 'reject ftp');
 
 const src = await PDFDocument.create();
 src.addPage([300, 400]);
