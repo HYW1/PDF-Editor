@@ -16,7 +16,6 @@ import {
   movePage,
   rotatePage
 } from '../core/pdf-engine';
-import { checkFileSize } from '../core/quota';
 import type {
   Annotation,
   AppView,
@@ -121,16 +120,17 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
 
   const openEditorFromFiles = useCallback(async (files: File[]) => {
     if (!files.length) return;
-    const oversized = files.find((file) => !checkFileSize(file.size));
-    if (oversized) {
-      throw new Error('文件超过 20MB，当前版本暂不支持');
-    }
     const nextDocs: Record<string, LoadedDoc> = {};
     const nextPages: PageInfo[] = [];
-    for (const file of files) {
-      const loaded = await loadPdfFile(file);
-      nextDocs[loaded.doc.id] = loaded.doc;
-      nextPages.push(...loaded.pages);
+    try {
+      for (const file of files) {
+        const loaded = await loadPdfFile(file);
+        nextDocs[loaded.doc.id] = loaded.doc;
+        nextPages.push(...loaded.pages);
+      }
+    } catch (error) {
+      console.error(error);
+      throw new Error('无法读取这个 PDF，文件可能已损坏或设备内存不足');
     }
     if (!nextPages.length) throw new Error('没有可读取的 PDF 页面');
     const snapshot = takeSnapshot(nextPages, [], 0);
@@ -189,11 +189,15 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const startAddPdf = useCallback(async (file: File) => {
-    if (!checkFileSize(file.size)) throw new Error('文件超过 20MB，当前版本暂不支持');
-    const loaded = await loadPdfFile(file);
-    setPendingDoc(loaded.doc);
-    setPendingPages(loaded.pages);
-    setView('page-selector');
+    try {
+      const loaded = await loadPdfFile(file);
+      setPendingDoc(loaded.doc);
+      setPendingPages(loaded.pages);
+      setView('page-selector');
+    } catch (error) {
+      console.error(error);
+      throw new Error('无法读取这个 PDF，文件可能已损坏或设备内存不足');
+    }
   }, []);
 
   const confirmAddPdf = useCallback(

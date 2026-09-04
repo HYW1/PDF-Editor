@@ -48,6 +48,7 @@ console.log('added text');
 
 const downloadPromise = page.waitForEvent('download', { timeout: 15000 });
 await page.getByRole('button', { name: '导出' }).click();
+await page.getByRole('button', { name: '直接导出' }).click();
 const download = await downloadPromise;
 const downloadPath = `${outDir}/exported_sample.pdf`;
 await download.saveAs(downloadPath);
@@ -56,6 +57,18 @@ if (exported.getPageCount() !== 3) {
   throw new Error(`exported page count ${exported.getPageCount()}, expected 3`);
 }
 console.log('exported', download.suggestedFilename(), 'pages', exported.getPageCount());
+
+const compressDownload = page.waitForEvent('download', { timeout: 30000 });
+await page.getByRole('button', { name: '导出' }).click();
+await page.getByRole('button', { name: '中画质压缩' }).click();
+const compressed = await compressDownload;
+const compressedPath = `${outDir}/exported_compressed.pdf`;
+await compressed.saveAs(compressedPath);
+const compressedPdf = await PDFDocument.load(await readFile(compressedPath));
+if (compressedPdf.getPageCount() !== 3) {
+  throw new Error(`compressed page count ${compressedPdf.getPageCount()}, expected 3`);
+}
+console.log('compressed', compressed.suggestedFilename(), 'pages', compressedPdf.getPageCount());
 
 await page.screenshot({ path: `${outDir}/editor_after_edits.png` });
 

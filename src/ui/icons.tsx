@@ -143,6 +143,25 @@ export function IconBlank(props: IconProps) {
   );
 }
 
+export function IconCloud(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M7 18h11a4 4 0 0 0 0-8 6 6 0 0 0-11.3-1.6A4 4 0 0 0 7 18z" />
+      <path d="M12 12v6M9.5 14.5 12 12l2.5 2.5" />
+    </Svg>
+  );
+}
+
+export function IconDocPlus(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M7 3h7l5 5v13H7z" />
+      <path d="M14 3v5h5" />
+      <path d="M12 11v6M9 14h6" />
+    </Svg>
+  );
+}
+
 export function IconChevron(props: IconProps) {
   return (
     <Svg {...props}>

@@ -1,18 +1,21 @@
 import type { UserQuota } from './types';
 
 const STORAGE_KEY = 'pdf-helper-quota';
-const DEFAULT_MAX_SIZE = 20 * 1024 * 1024;
 
 export function getQuota(): UserQuota {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as UserQuota;
+    if (raw) {
+      const parsed = JSON.parse(raw) as UserQuota;
+      if (parsed.maxFileSize === 20 * 1024 * 1024) parsed.maxFileSize = 0;
+      return parsed;
+    }
   } catch {
     /* ignore */
   }
   return {
     exportCount: 0,
-    maxFileSize: DEFAULT_MAX_SIZE,
+    maxFileSize: 0,
     unlocked: false,
     adWatched: false
   };
@@ -42,8 +45,10 @@ export function unlockWithAd(): UserQuota {
   return quota;
 }
 
-export function checkFileSize(size: number): boolean {
-  return size <= getQuota().maxFileSize;
+export function checkFileSize(_size: number): boolean {
+  const max = getQuota().maxFileSize;
+  if (!max || max <= 0) return true;
+  return _size <= max;
 }
 
 export function formatSize(bytes: number): string {

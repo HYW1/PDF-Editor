@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { compressPdfBytes, type ExportQuality } from '../core/pdf-compress';
 import { downloadBytes, pickFiles } from '../core/files';
 import { exportPdf } from '../core/pdf-engine';
 import { recordExport } from '../core/quota';
@@ -21,7 +22,7 @@ import { PageCanvas } from '../ui/PageCanvas';
 import { Toast } from '../ui/Toast';
 import { useIsDesktop } from '../ui/useMedia';
 
-type Sheet = 'add' | 'fit' | 'blank' | 'text' | null;
+type Sheet = 'add' | 'fit' | 'blank' | 'text' | 'export' | null;
 
 export function Editor() {
   const session = usePdfSession();
@@ -119,11 +120,24 @@ export function Editor() {
 
   async function onExport() {
     if (!pages.length || exporting) return;
+    setSheet('export');
+  }
+
+  async function confirmExport(quality: ExportQuality) {
+    if (!pages.length || exporting) return;
+    setSheet(null);
     try {
       setExporting(true);
-      const bytes = await exportPdf(pages, docs, annotations);
+      showToast(quality === 'original' ? '正在导出…' : '正在压缩…');
+      let bytes = await exportPdf(pages, docs, annotations);
+      if (quality !== 'original') {
+        bytes = await compressPdfBytes(bytes, quality, (done, total) => {
+          showToast(`压缩中 ${done}/${total}`);
+        });
+      }
       recordExport();
-      const name = fileName.replace(/\.pdf$/i, '') + '_编辑.pdf';
+      const suffix = quality === 'original' ? '_编辑.pdf' : `_压缩${quality === 'high' ? '高' : quality === 'medium' ? '中' : '低'}.pdf`;
+      const name = fileName.replace(/\.pdf$/i, '') + suffix;
       downloadBytes(bytes, name);
       showToast('已导出新的 PDF');
     } catch (error) {
@@ -365,6 +379,31 @@ export function Editor() {
               添加到页面
             </button>
           </div>
+        </div>
+      )}
+
+      {sheet === 'export' && (
+        <div className="sheet">
+          <div className="sheet-grabber" />
+          <h3>导出 PDF</h3>
+          <div className="sheet-group">
+            <button className="sheet-item" onClick={() => confirmExport('original')}>
+              直接导出
+            </button>
+            <button className="sheet-item" onClick={() => confirmExport('high')}>
+              高画质压缩
+            </button>
+            <button className="sheet-item" onClick={() => confirmExport('medium')}>
+              中画质压缩
+            </button>
+            <button className="sheet-item" onClick={() => confirmExport('low')}>
+              低画质压缩
+            </button>
+          </div>
+          <p className="sheet-note">直接导出保留原页面，适合文字稿。压缩会把每一页转成图片：扫描件和照片通常会变小，纯文字文件可能反而更大。</p>
+          <button className="sheet-cancel" onClick={() => setSheet(null)}>
+            取消
+          </button>
         </div>
       )}
 

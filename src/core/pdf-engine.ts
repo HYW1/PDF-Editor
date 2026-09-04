@@ -129,7 +129,7 @@ export async function exportPdf(
     }
   }
 
-  return out.save();
+  return out.save({ useObjectStreams: true });
 }
 
 async function appendPage(

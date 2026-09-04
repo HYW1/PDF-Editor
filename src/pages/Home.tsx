@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from 'react';
 import { pickFiles } from '../core/files';
 import { usePdfSession } from '../session/PdfSession';
-import { IconChevron, IconEdit, IconMerge, IconWeb } from '../ui/icons';
+import { IconChevron, IconCloud, IconDocPlus, IconEdit, IconFile, IconMerge, IconWeb } from '../ui/icons';
 import { Toast } from '../ui/Toast';
 
 export function Home() {
@@ -26,7 +26,7 @@ export function Home() {
 
   async function openSample() {
     try {
-      const res = await fetch('/sample.pdf');
+      const res = await fetch('./sample.pdf');
       const blob = await res.blob();
       const file = new File([blob], 'sample.pdf', { type: 'application/pdf' });
       await openEditorFromFiles([file]);
@@ -55,46 +55,66 @@ export function Home() {
   return (
     <div className="home">
       <div className="home-inner">
-        <div className="home-top">
-          <header>
-            <p className="kicker">轻量工具</p>
-            <h1 className="home-title">PDF小助手</h1>
-            <p className="home-subtitle">简单的 PDF 操作，不用打开 WPS。文件只在这台设备上处理。</p>
-          </header>
+        <div className="home-bar">
+          <div className="brand">
+            <span className="brand-mark">
+              <IconFile size={16} />
+            </span>
+            <span className="kicker">轻量工具</span>
+          </div>
           <button className="sample-link" onClick={openSample}>
+            <IconFile size={16} />
             打开示例 PDF
           </button>
         </div>
 
-        <div className="home-layout">
+        <header className="home-heading">
+          <h1 className="home-title">PDF小助手</h1>
+          <p className="home-subtitle">简单的 PDF 操作，不用打开 WPS。文件只在这台设备上处理。</p>
+        </header>
+
+        <div className="home-features">
           <button className="hero" onClick={() => openPdfs(false)}>
             <div className="hero-icon">
-              <IconEdit size={26} />
+              <IconEdit size={24} />
             </div>
-            <div>
+            <div className="hero-copy">
               <div className="hero-title">编辑 PDF</div>
               <div className="hero-desc">删除、排序、旋转，加上签名和文字，然后导出一份新文件。</div>
             </div>
-            <IconChevron size={20} />
+            <span className="row-chevron">
+              <IconChevron size={18} />
+            </span>
           </button>
 
-          <div>
+          <div className="more-block">
             <div className="section-label">更多操作</div>
-            <div className="tool-grid">
-              <button className="tool-card" onClick={() => openPdfs(true)}>
+            <div className="more-grid">
+              <button className="action-row" onClick={() => openPdfs(true)}>
                 <div className="tool-card-icon">
                   <IconMerge size={20} />
                 </div>
-                <div className="tool-card-title">合并 PDF</div>
-                <div className="tool-card-desc">选多个文件，合成后再调整页序</div>
+                <div className="action-body">
+                  <div className="tool-card-title">合并 PDF</div>
+                  <div className="tool-card-desc">选多个文件，合成后再调整页序</div>
+                </div>
+                <span className="row-chevron">
+                  <IconChevron size={18} />
+                </span>
               </button>
-              <button className="tool-card dim" onClick={openWebToPdf}>
+
+              <button className="action-row dim" onClick={openWebToPdf}>
                 <div className="tool-card-icon">
                   <IconWeb size={20} />
                 </div>
-                <div className="tool-card-title">网页转 PDF</div>
-                <div className="tool-card-desc">需要后端渲染，第二阶段再做</div>
-                <span className="badge">第二阶段</span>
+                <div className="action-body">
+                  <div className="tool-card-title">网页转 PDF</div>
+                  <div className="tool-card-desc">需要后端渲染，第二阶段再做</div>
+                  <span className="badge">第二阶段</span>
+                </div>
+                <span className="row-chevron">
+                  <IconChevron size={18} />
+                </span>
               </button>
             </div>
           </div>
@@ -102,6 +122,7 @@ export function Home() {
 
         <div
           className={`home-drop ${dragOver ? 'active' : ''}`}
+          onClick={() => openPdfs(false)}
           onDragOver={(event) => {
             event.preventDefault();
             setDragOver(true);
@@ -109,7 +130,13 @@ export function Home() {
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
         >
-          电脑上也可以把 PDF 拖到这里打开
+          <span className="drop-icon mobile-only">
+            <IconDocPlus size={28} />
+          </span>
+          <span className="drop-icon desktop-only">
+            <IconCloud size={28} />
+          </span>
+          <div>电脑上也可以把 PDF 拖到这里打开</div>
         </div>
 
         <p className="home-foot">手机点选文件，电脑支持拖拽。导出前不会上传到服务器。</p>
