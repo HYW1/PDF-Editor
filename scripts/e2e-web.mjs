@@ -72,7 +72,7 @@ await page.screenshot({ path: `${outDir}/editor_topbar.png`, clip: { x: 0, y: 0,
 console.log('editor loaded');
 
 await page.getByRole('button', { name: '签名' }).click();
-await page.getByText('手写签名').waitFor();
+await page.getByText('手写签名', { exact: true }).waitFor();
 const sigCancel = page.getByRole('button', { name: '取消' });
 await assertNavInline(sigCancel, 'signature cancel');
 await page.screenshot({ path: `${outDir}/signature_topbar.png`, clip: { x: 0, y: 0, width: 420, height: 72 } });
