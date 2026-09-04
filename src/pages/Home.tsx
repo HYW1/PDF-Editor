@@ -112,7 +112,7 @@ export function Home() {
           onDrop={onDrop}
         >
           <span className="drop-icon">
-            <IconDocPlus size={28} />
+            <IconDocPlus size={32} />
           </span>
           <div className="drop-copy mobile-only">点这里选择 PDF</div>
           <div className="drop-copy desktop-only">把 PDF 拖到这里，也可以点这里选择</div>

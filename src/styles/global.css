@@ -179,7 +179,7 @@ button {
 }
 
 .home-drop {
-  margin-top: 16px;
+  margin-top: 36px;
   min-height: 132px;
   padding: 22px 16px;
   border: 1.5px dashed rgba(47,107,255,0.28);
@@ -200,7 +200,7 @@ button {
   background: var(--primary-soft);
 }
 
-.drop-icon { color: var(--primary); display: grid; }
+.drop-icon { color: inherit; display: grid; }
 .desktop-only { display: none !important; }
 .mobile-only { display: grid; }
 
@@ -699,7 +699,7 @@ button {
   }
   .action-row:hover { box-shadow: var(--shadow); }
   .action-row .row-chevron { display: none; }
-  .home-drop { min-height: 168px; margin-top: 20px; }
+  .home-drop { min-height: 168px; margin-top: 48px; }
   .desktop-only { display: grid !important; }
   .mobile-only { display: none !important; }
 
