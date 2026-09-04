@@ -9,6 +9,7 @@ import {
 import { pushHistory, takeSnapshot } from '../core/history';
 import { generateId } from '../core/id';
 import {
+  A4,
   insertPages,
   loadPdfFile,
   makeBlankPage,
@@ -43,6 +44,7 @@ interface SessionApi extends SessionState {
   goHome: () => void;
   openWebToPdf: () => void;
   openEditorFromFiles: (files: File[]) => Promise<void>;
+  openEditorFromImages: (files: File[], fit?: FitMode) => Promise<void>;
   setCurrentPage: (index: number) => void;
   deleteCurrentPage: () => void;
   rotateCurrentPage: () => void;
@@ -139,6 +141,30 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
     setAnnotations([]);
     setCurrentPageIndex(0);
     setFileName(files.length === 1 ? files[0].name : `合并_${files.length}个文件.pdf`);
+    setHistory([snapshot]);
+    setHistoryIndex(0);
+    setSelectedAnnotationId(null);
+    setView('editor');
+  }, []);
+
+  const openEditorFromImages = useCallback(async (files: File[], fit: FitMode = 'contain') => {
+    if (!files.length) return;
+    let nextPages: PageInfo[] = [];
+    try {
+      nextPages = await makeImagePages(files, A4, fit);
+    } catch (error) {
+      console.error(error);
+      throw new Error('无法读取这些图片');
+    }
+    if (!nextPages.length) throw new Error('没有可读取的图片');
+    const snapshot = takeSnapshot(nextPages, [], 0);
+    setDocs({});
+    setPages(nextPages);
+    setAnnotations([]);
+    setCurrentPageIndex(0);
+    setFileName(
+      files.length === 1 ? files[0].name.replace(/\.[^.]+$/, '') + '.pdf' : `图片_${files.length}张.pdf`
+    );
     setHistory([snapshot]);
     setHistoryIndex(0);
     setSelectedAnnotationId(null);
@@ -327,6 +353,7 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
       goHome,
       openWebToPdf: () => setView('web-to-pdf'),
       openEditorFromFiles,
+      openEditorFromImages,
       setCurrentPage: setCurrentPageIndex,
       deleteCurrentPage,
       rotateCurrentPage,
@@ -364,6 +391,7 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
       history.length,
       historyIndex,
       openEditorFromFiles,
+      openEditorFromImages,
       pages,
       pendingDoc,
       pendingPages,

@@ -22,6 +22,14 @@ Page({
   },
 
   onWebToPDF() {
-    wx.showToast({ title: '即将推出', icon: 'none' });
+    wx.showToast({ title: '请先用网页版', icon: 'none' });
+  },
+
+  onImageToPDF() {
+    wx.showToast({ title: '请先用网页版', icon: 'none' });
+  },
+
+  onPdfToImage() {
+    wx.showToast({ title: '请先用网页版', icon: 'none' });
   }
 });

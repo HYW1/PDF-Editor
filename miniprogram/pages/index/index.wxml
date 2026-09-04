@@ -36,6 +36,28 @@
       </view>
       <view class="card-arrow">›</view>
     </view>
+
+    <view class="card" bindtap="onImageToPDF">
+      <view class="card-icon">
+        <view class="icon-web">▣</view>
+      </view>
+      <view class="card-body">
+        <view class="card-title">图片转 PDF</view>
+        <view class="card-desc">把照片做成一页一页的 PDF</view>
+      </view>
+      <view class="card-arrow">›</view>
+    </view>
+
+    <view class="card" bindtap="onPdfToImage">
+      <view class="card-icon">
+        <view class="icon-web">▤</view>
+      </view>
+      <view class="card-body">
+        <view class="card-title">PDF 转图片</view>
+        <view class="card-desc">把每一页存成 PNG 图片</view>
+      </view>
+      <view class="card-arrow">›</view>
+    </view>
   </view>
 
   <view class="footer">

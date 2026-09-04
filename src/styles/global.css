@@ -81,7 +81,9 @@ button {
   line-height: 1.15;
 }
 
-.home-features {
+.home-features,
+.home-primary,
+.convert-grid {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -206,12 +208,59 @@ button {
   text-align: center;
 }
 
-.tip-amount {
-  margin: 6px 0 2px;
+.tip-amount-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 8px 16px 4px;
+}
+
+.tip-currency {
+  font-size: 24px;
+  font-weight: 750;
+}
+
+.tip-input {
+  width: 148px;
+  min-height: 52px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0 12px;
   text-align: center;
   font-size: 28px;
   font-weight: 750;
   letter-spacing: -0.03em;
+  background: #fff;
+}
+
+.tip-input:focus {
+  outline: 2px solid rgba(47, 107, 255, 0.28);
+  border-color: var(--primary);
+}
+
+.tip-presets {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 12px 6px;
+}
+
+.tip-preset {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.tip-preset.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
 }
 
 .sheet-note {
@@ -819,14 +868,18 @@ button {
   .brand-mark, .brand-mark img { width: 48px; height: 48px; }
   .home-heading { margin-bottom: 48px; }
   .home-title { font-size: 40px; letter-spacing: -0.045em; }
-  .section-label { display: none; }
-  .home-features {
+  .home-features { gap: 18px; }
+  .home-primary {
     display: grid;
     grid-template-columns: 1.35fr 1fr 1fr;
     gap: 18px;
     align-items: stretch;
   }
-  .more-block, .more-grid { display: contents; }
+  .convert-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
   .hero {
     min-height: 188px;
     padding: 26px 24px;

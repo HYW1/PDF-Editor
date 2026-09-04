@@ -3,6 +3,7 @@ import { compressPdfBytes, type ExportQuality } from '../core/pdf-compress';
 import { estimateExportSizes, formatEstimate } from '../core/pdf-estimate';
 import { downloadBytes, pickFiles } from '../core/files';
 import { exportPdf } from '../core/pdf-engine';
+import { downloadPageImages, renderPagesToPngs } from '../core/pdf-to-images';
 import { AD_SECONDS, compressNeedsAd, formatSize, recordExport, unlockWithAd } from '../core/quota';
 import type { Annotation, FitMode } from '../core/types';
 import { usePdfSession } from '../session/PdfSession';
@@ -181,6 +182,25 @@ export function Editor() {
     } finally {
       setExporting(false);
       setPendingQuality(null);
+    }
+  }
+
+  async function exportAsImages() {
+    if (!pages.length || exporting) return;
+    setSheet(null);
+    try {
+      setExporting(true);
+      showToast('正在导出图片…');
+      const images = await renderPagesToPngs(pages, docs, annotations, (done, total) => {
+        showToast(`导出图片 ${done}/${total}`);
+      });
+      downloadPageImages(images, fileName);
+      showToast(images.length === 1 ? '已导出图片' : `已导出 ${images.length} 张图片`);
+    } catch (error) {
+      console.error(error);
+      showToast(error instanceof Error ? error.message : '导出图片失败');
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -482,8 +502,19 @@ export function Editor() {
               </span>
               <span className="sheet-item-sub">看完广告后导出</span>
             </button>
+            <button
+              className="sheet-item sheet-item-stack"
+              aria-label="导出为图片"
+              onClick={() => void exportAsImages()}
+            >
+              <span className="sheet-item-row">
+                <span>导出为图片</span>
+                <span className="sheet-item-meta">PNG</span>
+              </span>
+              <span className="sheet-item-sub">免费，一页一张</span>
+            </button>
           </div>
-          <p className="sheet-note">编辑和直接导出都免费。压缩会把每一页变成图片，扫描件通常更小，纯文字稿可能变大。</p>
+          <p className="sheet-note">编辑、直接导出和转图片都免费。压缩会把每一页变成图片，扫描件通常更小，纯文字稿可能变大。</p>
           <button className="sheet-cancel" onClick={() => setSheet(null)}>
             取消
           </button>

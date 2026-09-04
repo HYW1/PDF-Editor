@@ -169,3 +169,14 @@ export function IconChevron(props: IconProps) {
     </Svg>
   );
 }
+
+export function IconPdfToImage(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 4h7l5 5v11H6z" />
+      <path d="M13 4v5h5" />
+      <rect x="8" y="12" width="8" height="6" rx="1" />
+      <circle cx="10.2" cy="14.2" r="0.7" />
+    </Svg>
+  );
+}

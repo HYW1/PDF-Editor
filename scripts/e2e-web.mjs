@@ -47,8 +47,11 @@ if (await page.getByRole('button', { name: '打开示例 PDF' }).count()) {
 }
 await page.getByRole('button', { name: '随机打赏' }).waitFor();
 await page.screenshot({ path: `${outDir}/home_desktop.png`, fullPage: true });
+await page.getByRole('button', { name: '图片转 PDF' }).waitFor();
+await page.getByRole('button', { name: 'PDF 转图片' }).waitFor();
 await page.getByRole('button', { name: '随机打赏' }).click();
 await page.getByRole('heading', { name: '随机打赏' }).waitFor();
+await page.getByLabel('打赏金额').fill('12.5');
 await page.screenshot({ path: `${outDir}/home_tip_sheet.png` });
 await page.getByRole('button', { name: '关闭' }).click();
 await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
@@ -177,6 +180,34 @@ if (compressedPdf.getPageCount() !== 3) {
 console.log('compressed', compressed.suggestedFilename(), 'pages', compressedPdf.getPageCount());
 
 await page.screenshot({ path: `${outDir}/editor_after_edits.png` });
+await page.getByRole('button', { name: '返回', exact: true }).click();
+await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
+
+const [imageChooser] = await Promise.all([
+  page.waitForEvent('filechooser'),
+  page.getByRole('button', { name: '图片转 PDF' }).click()
+]);
+await imageChooser.setFiles('public/sample.png');
+await page.getByText('1 / 1').waitFor({ timeout: 15000 });
+await page.screenshot({ path: `${outDir}/image_to_pdf_editor.png` });
+await page.getByRole('button', { name: '返回', exact: true }).click();
+await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
+console.log('image to pdf ok');
+
+const imageDownload = page.waitForEvent('download', { timeout: 30000 });
+const [pdfChooser] = await Promise.all([
+  page.waitForEvent('filechooser'),
+  page.getByRole('button', { name: 'PDF 转图片' }).click()
+]);
+await pdfChooser.setFiles('public/sample.pdf');
+const imageZip = await imageDownload;
+const imageZipPath = `${outDir}/sample_pages.zip`;
+await imageZip.saveAs(imageZipPath);
+const zipBytes = await readFile(imageZipPath);
+if (zipBytes[0] !== 0x50 || zipBytes[1] !== 0x4b) {
+  throw new Error('pdf-to-image should download a zip');
+}
+console.log('pdf to images ok', imageZip.suggestedFilename());
 
 const mobile = await browser.newPage({
   viewport: { width: 390, height: 844 },
@@ -187,6 +218,9 @@ await mobile.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
 await mobile.getByRole('heading', { name: 'PDF小助手' }).waitFor();
 if (await mobile.getByRole('button', { name: '打开示例 PDF' }).count()) {
   throw new Error('sample PDF button should be removed from mobile home');
+}
+if (!(await mobile.getByRole('button', { name: '图片转 PDF' }).count())) {
+  throw new Error('image to pdf should be on mobile home');
 }
 await mobile.screenshot({ path: `${outDir}/home_mobile.png`, fullPage: true });
 console.log('mobile home ok');
