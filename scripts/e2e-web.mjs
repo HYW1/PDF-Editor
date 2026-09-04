@@ -101,6 +101,7 @@ if (await invoiceHit.count()) {
 await page.getByPlaceholder('改这一行的文字').fill('Invoice edited');
 await page.getByRole('button', { name: '保存' }).click();
 await page.getByText('Invoice edited').waitFor();
+await page.locator('.page-indicator').click();
 await page.screenshot({ path: `${outDir}/replace_original_text.png` });
 console.log('replaced original text');
 
@@ -126,7 +127,7 @@ await page.getByRole('button', { name: '取消', exact: true }).click();
 await page.getByText('1 / 3').waitFor();
 console.log('page selector cancel aligned');
 
-await page.getByRole('button', { name: '删除' }).click();
+await page.locator('.toolbar button.tool', { hasText: '删除' }).click();
 await page.getByText('1 / 2').waitFor({ timeout: 8000 });
 console.log('deleted one page');
 
