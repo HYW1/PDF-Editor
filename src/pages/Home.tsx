@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from 'react';
 import { pickFiles } from '../core/files';
 import { usePdfSession } from '../session/PdfSession';
-import { IconChevron, IconDocPlus, IconEdit, IconMerge, IconWeb } from '../ui/icons';
+import { IconChevron, IconEdit, IconMerge, IconWeb } from '../ui/icons';
 import { Toast } from '../ui/Toast';
 
 export function Home() {
@@ -42,7 +42,18 @@ export function Home() {
   }
 
   return (
-    <div className="home">
+    <div
+      className={`home ${dragOver ? 'drag-over' : ''}`}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+        setDragOver(false);
+      }}
+      onDrop={onDrop}
+    >
       <div className="home-inner">
         <header className="home-heading">
           <div className="brand">
@@ -98,23 +109,6 @@ export function Home() {
               </button>
             </div>
           </div>
-        </div>
-
-        <div
-          className={`home-drop ${dragOver ? 'active' : ''}`}
-          onClick={() => openPdfs(false)}
-          onDragOver={(event) => {
-            event.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDrop}
-        >
-          <span className="drop-icon">
-            <IconDocPlus size={32} />
-          </span>
-          <div className="drop-copy mobile-only">点这里选择 PDF</div>
-          <div className="drop-copy desktop-only">把 PDF 拖到这里，也可以点这里选择</div>
         </div>
 
         <p className="home-foot">文件不上传，改完再导出。</p>

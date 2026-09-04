@@ -170,36 +170,13 @@ button {
   font-weight: 650;
 }
 
-.home-drop {
-  margin-top: 36px;
-  min-height: 132px;
-  padding: 22px 16px;
-  border: 1.5px dashed rgba(47,107,255,0.28);
-  border-radius: 22px;
-  text-align: center;
-  color: var(--text-hint);
-  background: rgba(255, 255, 255, 0.72);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+.home.drag-over .hero {
+  outline: 2px dashed rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
 }
-
-.home-drop.active {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--primary-soft);
-}
-
-.drop-icon { color: inherit; display: grid; }
-.desktop-only { display: none !important; }
-.mobile-only { display: grid; }
-
-.drop-copy { font-size: 14px; line-height: 1.45; }
 
 .home-foot {
-  margin-top: 14px;
+  margin-top: 28px;
   color: var(--text-hint);
   font-size: 12px;
   line-height: 1.5;
@@ -698,10 +675,6 @@ button {
   .tool-card-desc { margin-top: 8px; font-size: 14px; }
   .action-row:hover { background: #fafafa; border-color: rgba(47, 107, 255, 0.18); }
   .action-row .row-chevron { display: none; }
-  .home-drop { min-height: 168px; margin-top: 40px; }
-  .drop-copy { font-size: 15px; }
-  .desktop-only { display: grid !important; }
-  .mobile-only { display: none !important; }
 
   .editor {
     grid-template-columns: 148px 1fr;
