@@ -50,7 +50,7 @@ console.log('home ok');
 
 await page.getByRole('button', { name: '网页转 PDF' }).click();
 await page.getByRole('heading', { name: '这个功能还在准备' }).waitFor();
-const webBack = page.getByRole('button', { name: '返回' });
+const webBack = page.getByRole('button', { name: '返回', exact: true });
 await assertNavInline(webBack, 'web-to-pdf back');
 await page.screenshot({ path: `${outDir}/web_to_pdf_topbar.png`, clip: { x: 0, y: 0, width: 420, height: 72 } });
 await page.screenshot({ path: `${outDir}/web_to_pdf_honest.png` });
@@ -66,7 +66,7 @@ await fileChooser.setFiles('public/sample.pdf');
 await page.getByText('1 / 3').waitFor({ timeout: 15000 });
 await page.waitForTimeout(800);
 await page.screenshot({ path: `${outDir}/editor_sample_loaded.png` });
-const editorBack = page.getByRole('button', { name: '返回' });
+const editorBack = page.getByRole('button', { name: '返回', exact: true });
 await assertNavInline(editorBack, 'editor back');
 await page.locator('.topbar').screenshot({ path: `${outDir}/editor_topbar_full.png` });
 await page.locator('.history-btns').screenshot({ path: `${outDir}/undo_redo_icons.png` });
@@ -175,7 +175,7 @@ console.log('mobile home ok');
 
 await mobile.getByRole('button', { name: '网页转 PDF' }).click();
 await mobile.getByRole('heading', { name: '这个功能还在准备' }).waitFor();
-const mobileBack = mobile.getByRole('button', { name: '返回' });
+const mobileBack = mobile.getByRole('button', { name: '返回', exact: true });
 await assertNavInline(mobileBack, 'mobile web-to-pdf back');
 await mobile.screenshot({ path: `${outDir}/web_to_pdf_mobile_topbar.png`, clip: { x: 0, y: 0, width: 390, height: 80 } });
 await mobile.screenshot({ path: `${outDir}/web_to_pdf_honest.png` });
