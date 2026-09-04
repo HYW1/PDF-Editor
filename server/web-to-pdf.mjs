@@ -35,20 +35,33 @@ async function getBrowser() {
   }
 }
 
-export async function renderUrlToPdf(targetUrl) {
+export async function renderUrlToPdf(targetUrl, onProgress) {
+  onProgress?.(12, '正在启动浏览器');
   const browser = await getBrowser();
+  onProgress?.(22, '正在打开网页');
   const page = await browser.newPage({
     viewport: { width: 1280, height: 900 },
     locale: 'zh-CN'
   });
   try {
+    let loaded = false;
+    page.on('load', () => {
+      loaded = true;
+      onProgress?.(58, '网页已打开');
+    });
+    onProgress?.(32, '正在打开网页');
     await page.goto(targetUrl, { waitUntil: 'load', timeout: 25000 });
+    if (!loaded) onProgress?.(62, '网页已打开');
+    onProgress?.(74, '正在整理页面');
     await page.waitForTimeout(700);
-    return await page.pdf({
+    onProgress?.(86, '正在生成 PDF');
+    const bytes = await page.pdf({
       format: 'A4',
       printBackground: true,
       margin: { top: '12mm', right: '12mm', bottom: '12mm', left: '12mm' }
     });
+    onProgress?.(96, '即将完成');
+    return bytes;
   } finally {
     await page.close().catch(() => {});
   }
@@ -96,8 +109,30 @@ export function webToPdfPlugin() {
         res.end(JSON.stringify({ error: parsed.error }));
         return;
       }
-      const bytes = await renderUrlToPdf(parsed.href);
       const name = `${parsed.host.replace(/[^\w.-]+/g, '_')}.pdf`;
+      const wantsProgress = /ndjson|text\/event-stream/i.test(String(req.headers.accept || ''));
+      if (wantsProgress) {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache');
+        const send = (payload) => res.write(`${JSON.stringify(payload)}\n`);
+        send({ type: 'progress', progress: 8, message: '正在准备' });
+        try {
+          const bytes = await renderUrlToPdf(parsed.href, (progress, message) => {
+            send({ type: 'progress', progress, message });
+          });
+          send({ type: 'file', name, pdf: Buffer.from(bytes).toString('base64') });
+          res.end();
+        } catch (error) {
+          console.error(error);
+          const message = String(error?.message || error);
+          const timeout = /timeout|timed out/i.test(message);
+          send({ type: 'error', error: timeout ? '打开网页超时' : '打不开这个网页' });
+          res.end();
+        }
+        return;
+      }
+      const bytes = await renderUrlToPdf(parsed.href);
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${name}"`);

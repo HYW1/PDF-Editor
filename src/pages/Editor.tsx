@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { compressPdfBytes, type ExportQuality } from '../core/pdf-compress';
+import { estimateExportSizes, formatEstimate } from '../core/pdf-estimate';
 import { downloadBytes, pickFiles } from '../core/files';
 import { exportPdf } from '../core/pdf-engine';
-import { recordExport } from '../core/quota';
+import { AD_SECONDS, compressNeedsAd, formatSize, recordExport, unlockWithAd } from '../core/quota';
 import type { Annotation, FitMode } from '../core/types';
 import { usePdfSession } from '../session/PdfSession';
 import { IconTip } from '../ui/IconTip';
@@ -23,7 +24,7 @@ import { PageCanvas } from '../ui/PageCanvas';
 import { Toast } from '../ui/Toast';
 import { useIsDesktop } from '../ui/useMedia';
 
-type Sheet = 'add' | 'fit' | 'blank' | 'text' | 'export' | null;
+type Sheet = 'add' | 'fit' | 'blank' | 'text' | 'export' | 'ad' | null;
 
 export function Editor() {
   const session = usePdfSession();
@@ -42,6 +43,8 @@ export function Editor() {
   const [textValue, setTextValue] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [pendingQuality, setPendingQuality] = useState<Exclude<ExportQuality, 'original'> | null>(null);
+  const [adLeft, setAdLeft] = useState(AD_SECONDS);
   const stageRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [previewWidth, setPreviewWidth] = useState(280);
@@ -84,6 +87,26 @@ export function Editor() {
     [annotations, currentPage]
   );
 
+  const exportSizes = useMemo(
+    () => estimateExportSizes(pages, docs, annotations),
+    [annotations, docs, pages]
+  );
+
+  useEffect(() => {
+    if (sheet !== 'ad') return;
+    setAdLeft(AD_SECONDS);
+    const timer = window.setInterval(() => {
+      setAdLeft((left) => {
+        if (left <= 1) {
+          window.clearInterval(timer);
+          return 0;
+        }
+        return left - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [sheet]);
+
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(null), 2200);
@@ -124,6 +147,16 @@ export function Editor() {
     setSheet('export');
   }
 
+  function startCompress(quality: Exclude<ExportQuality, 'original'>) {
+    if (!pages.length || exporting) return;
+    if (compressNeedsAd()) {
+      setPendingQuality(quality);
+      setSheet('ad');
+      return;
+    }
+    void confirmExport(quality);
+  }
+
   async function confirmExport(quality: ExportQuality) {
     if (!pages.length || exporting) return;
     setSheet(null);
@@ -132,6 +165,7 @@ export function Editor() {
       showToast(quality === 'original' ? '正在导出…' : '正在压缩…');
       let bytes = await exportPdf(pages, docs, annotations);
       if (quality !== 'original') {
+        unlockWithAd();
         bytes = await compressPdfBytes(bytes, quality, (done, total) => {
           showToast(`压缩中 ${done}/${total}`);
         });
@@ -146,6 +180,7 @@ export function Editor() {
       showToast(error instanceof Error ? error.message : '导出失败');
     } finally {
       setExporting(false);
+      setPendingQuality(null);
     }
   }
 
@@ -403,21 +438,77 @@ export function Editor() {
           <div className="sheet-grabber" />
           <h3>导出 PDF</h3>
           <div className="sheet-group">
-            <button className="sheet-item" onClick={() => confirmExport('original')}>
-              直接导出
+            <button
+              className="sheet-item sheet-item-stack"
+              aria-label="直接导出"
+              onClick={() => confirmExport('original')}
+            >
+              <span className="sheet-item-row">
+                <span>直接导出</span>
+                <span className="sheet-item-meta">{formatSize(exportSizes.original)}</span>
+              </span>
+              <span className="sheet-item-sub">免费，不看广告</span>
             </button>
-            <button className="sheet-item" onClick={() => confirmExport('high')}>
-              高画质压缩
+            <button
+              className="sheet-item sheet-item-stack"
+              aria-label="高画质压缩"
+              onClick={() => startCompress('high')}
+            >
+              <span className="sheet-item-row">
+                <span>高画质压缩</span>
+                <span className="sheet-item-meta">{formatEstimate(exportSizes.high)}</span>
+              </span>
+              <span className="sheet-item-sub">看完广告后导出</span>
             </button>
-            <button className="sheet-item" onClick={() => confirmExport('medium')}>
-              中画质压缩
+            <button
+              className="sheet-item sheet-item-stack"
+              aria-label="中画质压缩"
+              onClick={() => startCompress('medium')}
+            >
+              <span className="sheet-item-row">
+                <span>中画质压缩</span>
+                <span className="sheet-item-meta">{formatEstimate(exportSizes.medium)}</span>
+              </span>
+              <span className="sheet-item-sub">看完广告后导出</span>
             </button>
-            <button className="sheet-item" onClick={() => confirmExport('low')}>
-              低画质压缩
+            <button
+              className="sheet-item sheet-item-stack"
+              aria-label="低画质压缩"
+              onClick={() => startCompress('low')}
+            >
+              <span className="sheet-item-row">
+                <span>低画质压缩</span>
+                <span className="sheet-item-meta">{formatEstimate(exportSizes.low)}</span>
+              </span>
+              <span className="sheet-item-sub">看完广告后导出</span>
             </button>
           </div>
-          <p className="sheet-note">原样导出适合文字稿。压缩会把每一页变成图片，扫描件通常更小，纯文字稿可能变大。</p>
+          <p className="sheet-note">编辑和直接导出都免费。压缩会把每一页变成图片，扫描件通常更小，纯文字稿可能变大。</p>
           <button className="sheet-cancel" onClick={() => setSheet(null)}>
+            取消
+          </button>
+        </div>
+      )}
+
+      {sheet === 'ad' && pendingQuality && (
+        <div className="sheet">
+          <div className="sheet-grabber" />
+          <h3>看完广告后压缩导出</h3>
+          <p className="sheet-note ad-lead">功能都免费。只有压缩导出需要看一段广告。</p>
+          <div className="ad-slot" aria-label="广告">
+            <span>广告</span>
+          </div>
+          <p className="ad-count">
+            {adLeft > 0 ? `${adLeft} 秒后可以导出` : '可以导出了'}
+          </p>
+          <button
+            className="primary-btn ad-export"
+            disabled={adLeft > 0 || exporting}
+            onClick={() => void confirmExport(pendingQuality)}
+          >
+            {adLeft > 0 ? `请稍等 ${adLeft} 秒` : '导出压缩文件'}
+          </button>
+          <button className="sheet-cancel" onClick={() => setSheet('export')}>
             取消
           </button>
         </div>

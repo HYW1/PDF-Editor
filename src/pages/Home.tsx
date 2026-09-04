@@ -4,10 +4,18 @@ import { usePdfSession } from '../session/PdfSession';
 import { IconChevron, IconEdit, IconMerge, IconWeb } from '../ui/icons';
 import { Toast } from '../ui/Toast';
 
+const TIP_AMOUNTS = [2, 3, 5, 6.6, 8.8, 16.8];
+
+function randomTipAmount() {
+  return TIP_AMOUNTS[Math.floor(Math.random() * TIP_AMOUNTS.length)];
+}
+
 export function Home() {
   const { openEditorFromFiles, openWebToPdf } = usePdfSession();
   const [toast, setToast] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [tipOpen, setTipOpen] = useState(false);
+  const [tipAmount, setTipAmount] = useState(5);
 
   function showToast(message: string) {
     setToast(message);
@@ -110,8 +118,34 @@ export function Home() {
           </div>
         </div>
 
-        <p className="home-foot">文件不上传，改完再导出。</p>
+        <div className="home-foot-block">
+          <p className="home-foot">功能都免费。文件不上传，改完再导出。</p>
+          <button
+            className="home-tip"
+            onClick={() => {
+              setTipAmount(randomTipAmount());
+              setTipOpen(true);
+            }}
+          >
+            随机打赏
+          </button>
+        </div>
       </div>
+      {tipOpen && (
+        <>
+          <div className="sheet-mask" onClick={() => setTipOpen(false)} />
+          <div className="sheet">
+            <div className="sheet-grabber" />
+            <h3>随机打赏</h3>
+            <p className="sheet-note tip-copy">功能都免费，完全自愿。每次打开会随机一个心意金额。</p>
+            <div className="tip-amount">¥{tipAmount}</div>
+            <p className="sheet-note tip-copy">收款码还没放上来，先记下这份心意。</p>
+            <button className="sheet-cancel" onClick={() => setTipOpen(false)}>
+              关闭
+            </button>
+          </div>
+        </>
+      )}
       <Toast message={toast} />
     </div>
   );

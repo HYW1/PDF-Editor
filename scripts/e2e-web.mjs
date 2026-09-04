@@ -45,7 +45,13 @@ await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
 if (await page.getByRole('button', { name: '打开示例 PDF' }).count()) {
   throw new Error('sample PDF button should be removed from home');
 }
+await page.getByRole('button', { name: '随机打赏' }).waitFor();
 await page.screenshot({ path: `${outDir}/home_desktop.png`, fullPage: true });
+await page.getByRole('button', { name: '随机打赏' }).click();
+await page.getByRole('heading', { name: '随机打赏' }).waitFor();
+await page.screenshot({ path: `${outDir}/home_tip_sheet.png` });
+await page.getByRole('button', { name: '关闭' }).click();
+await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
 console.log('home ok');
 
 await page.getByRole('button', { name: '网页转 PDF' }).click();
@@ -137,8 +143,13 @@ await page.getByRole('button', { name: '添加到页面' }).click();
 await page.getByText('本地导出测试').waitFor();
 console.log('added text');
 
-const downloadPromise = page.waitForEvent('download', { timeout: 15000 });
 await page.getByRole('button', { name: '导出' }).click();
+await page.getByRole('button', { name: '直接导出' }).waitFor();
+if (!(await page.getByText(/预估/).count())) {
+  throw new Error('compress options should show estimated size');
+}
+await page.locator('.sheet').screenshot({ path: `${outDir}/export_sheet_sizes.png` });
+const downloadPromise = page.waitForEvent('download', { timeout: 15000 });
 await page.getByRole('button', { name: '直接导出' }).click();
 const download = await downloadPromise;
 const downloadPath = `${outDir}/exported_sample.pdf`;
@@ -149,9 +160,13 @@ if (exported.getPageCount() !== 3) {
 }
 console.log('exported', download.suggestedFilename(), 'pages', exported.getPageCount());
 
-const compressDownload = page.waitForEvent('download', { timeout: 30000 });
 await page.getByRole('button', { name: '导出' }).click();
 await page.getByRole('button', { name: '中画质压缩' }).click();
+await page.getByText('看完广告后压缩导出').waitFor();
+await page.screenshot({ path: `${outDir}/compress_ad.png` });
+await page.getByRole('button', { name: '导出压缩文件' }).waitFor({ timeout: 8000 });
+const compressDownload = page.waitForEvent('download', { timeout: 30000 });
+await page.getByRole('button', { name: '导出压缩文件' }).click();
 const compressed = await compressDownload;
 const compressedPath = `${outDir}/exported_compressed.pdf`;
 await compressed.saveAs(compressedPath);

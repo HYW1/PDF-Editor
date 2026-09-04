@@ -1,14 +1,11 @@
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocument } from 'pdf-lib';
+import { COMPRESS_PRESETS } from './pdf-estimate';
 import './pdf-render';
 
 export type ExportQuality = 'original' | 'high' | 'medium' | 'low';
 
-const PRESETS = {
-  high: { scale: 2, jpeg: 0.84 },
-  medium: { scale: 1.35, jpeg: 0.62 },
-  low: { scale: 1, jpeg: 0.4 }
-} as const;
+const PRESETS = COMPRESS_PRESETS;
 
 export function qualityLabel(quality: ExportQuality): string {
   if (quality === 'original') return '原画质';

@@ -25,8 +25,13 @@ export function saveQuota(quota: UserQuota): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(quota));
 }
 
+export const AD_SECONDS = 5;
+
 export function canExport(): boolean {
-  // Phase 1: always allow. Ads / paid unlock hook in later.
+  return true;
+}
+
+export function compressNeedsAd(): boolean {
   return true;
 }
 
