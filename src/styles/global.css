@@ -51,56 +51,42 @@ button {
 
 .home-inner { max-width: 1080px; margin: 0 auto; }
 
-.home-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
 .brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .brand-mark {
   display: block;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   line-height: 0;
 }
 
 .brand-mark img {
   display: block;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
 }
 
-.kicker {
-  margin: 0;
-  color: var(--primary);
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.home-heading { margin-bottom: 22px; }
+.home-heading { margin-bottom: 24px; }
 
 .home-title {
   margin: 0;
-  font-size: 34px;
+  font-size: 28px;
   letter-spacing: -0.04em;
   font-weight: 750;
+  line-height: 1.1;
 }
 
 .home-subtitle {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   color: var(--text-secondary);
   font-size: 15px;
-  line-height: 1.5;
-  max-width: 34em;
+  line-height: 1.55;
+  max-width: 28em;
 }
 
 .home-features {
@@ -124,14 +110,18 @@ button {
 
 .hero:active { transform: scale(0.985); }
 
-.hero-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
+.feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   display: grid;
   place-items: center;
-  background: rgba(255,255,255,0.18);
   flex-shrink: 0;
+}
+
+.hero .feature-icon {
+  background: rgba(255,255,255,0.18);
+  color: #fff;
 }
 
 .hero-copy { flex: 1; min-width: 0; }
@@ -168,15 +158,9 @@ button {
 .action-row.dim { opacity: 0.92; }
 .action-body { flex: 1; min-width: 0; }
 
-.tool-card-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 13px;
-  display: grid;
-  place-items: center;
+.action-row .feature-icon {
   background: var(--primary-soft);
   color: var(--primary);
-  flex-shrink: 0;
 }
 
 .tool-card-title { font-size: 16px; font-weight: 700; }
@@ -683,7 +667,9 @@ button {
 
 @media (min-width: 900px) {
   .home { padding: 40px 32px 48px; }
-  .home-title { font-size: 48px; }
+  .brand { gap: 14px; }
+  .brand-mark, .brand-mark img { width: 48px; height: 48px; }
+  .home-title { font-size: 44px; }
   .home-subtitle { font-size: 17px; }
   .section-label { display: none; }
   .home-features {
@@ -697,7 +683,7 @@ button {
     min-height: 188px;
     padding: 26px 24px;
   }
-  .hero-icon { width: 52px; height: 52px; }
+  .feature-icon { width: 52px; height: 52px; border-radius: 16px; }
   .hero:hover { transform: translateY(-1px); }
   .action-row {
     min-height: 188px;

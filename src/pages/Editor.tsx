@@ -312,7 +312,7 @@ export function Editor() {
       {sheet === 'fit' && (
         <div className="sheet">
           <div className="sheet-grabber" />
-          <h3>图片如何放入页面</h3>
+          <h3>图片怎么放进页面</h3>
           <div className="sheet-group">
           <button className="sheet-item" onClick={() => confirmFit('contain')}>
             适应页面（保持比例，完整显示）
@@ -367,7 +367,7 @@ export function Editor() {
           <textarea
             value={textValue}
             onChange={(event) => setTextValue(event.target.value)}
-            placeholder="输入要加到当前页的文字"
+            placeholder="输入要加到这一页的文字"
             rows={4}
             style={{
               width: '100%',
@@ -416,7 +416,7 @@ export function Editor() {
               低画质压缩
             </button>
           </div>
-          <p className="sheet-note">直接导出保留原页面，适合文字稿。压缩会把每一页转成图片：扫描件和照片通常会变小，纯文字文件可能反而更大。</p>
+          <p className="sheet-note">原样导出适合文字稿。压缩会把每一页变成图片，扫描件通常更小，纯文字稿可能变大。</p>
           <button className="sheet-cancel" onClick={() => setSheet(null)}>
             取消
           </button>

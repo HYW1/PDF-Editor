@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from 'react';
 import { pickFiles } from '../core/files';
 import { usePdfSession } from '../session/PdfSession';
-import { IconChevron, IconCloud, IconDocPlus, IconEdit, IconMerge, IconWeb } from '../ui/icons';
+import { IconChevron, IconDocPlus, IconEdit, IconMerge, IconWeb } from '../ui/icons';
 import { Toast } from '../ui/Toast';
 
 export function Home() {
@@ -44,28 +44,24 @@ export function Home() {
   return (
     <div className="home">
       <div className="home-inner">
-        <div className="home-bar">
+        <header className="home-heading">
           <div className="brand">
             <span className="brand-mark">
-              <img src="/logo.png" width={32} height={32} alt="PDF小助手" />
+              <img src="/logo.png" width={48} height={48} alt="" />
             </span>
-            <span className="kicker">轻量工具</span>
+            <h1 className="home-title">PDF小助手</h1>
           </div>
-        </div>
-
-        <header className="home-heading">
-          <h1 className="home-title">PDF小助手</h1>
-          <p className="home-subtitle">简单的 PDF 操作，不用打开 WPS。文件只在这台设备上处理。</p>
+          <p className="home-subtitle">改页、合并、签名，都在这台设备上完成。</p>
         </header>
 
         <div className="home-features">
           <button className="hero" onClick={() => openPdfs(false)}>
-            <div className="hero-icon">
+            <div className="feature-icon">
               <IconEdit size={24} />
             </div>
             <div className="hero-copy">
               <div className="hero-title">编辑 PDF</div>
-              <div className="hero-desc">删除、排序、旋转，加上签名和文字，然后导出一份新文件。</div>
+              <div className="hero-desc">删页、调序、旋转，加上签名和文字后导出。</div>
             </div>
             <span className="row-chevron">
               <IconChevron size={18} />
@@ -76,12 +72,12 @@ export function Home() {
             <div className="section-label">更多操作</div>
             <div className="more-grid">
               <button className="action-row" onClick={() => openPdfs(true)}>
-                <div className="tool-card-icon">
-                  <IconMerge size={20} />
+                <div className="feature-icon">
+                  <IconMerge size={24} />
                 </div>
                 <div className="action-body">
                   <div className="tool-card-title">合并 PDF</div>
-                  <div className="tool-card-desc">选多个文件，合成后再调整页序</div>
+                  <div className="tool-card-desc">把多个文件合成一份，再调整页序。</div>
                 </div>
                 <span className="row-chevron">
                   <IconChevron size={18} />
@@ -89,13 +85,13 @@ export function Home() {
               </button>
 
               <button className="action-row dim" onClick={openWebToPdf}>
-                <div className="tool-card-icon">
-                  <IconWeb size={20} />
+                <div className="feature-icon">
+                  <IconWeb size={24} />
                 </div>
                 <div className="action-body">
                   <div className="tool-card-title">网页转 PDF</div>
-                  <div className="tool-card-desc">需要后端渲染，第二阶段再做</div>
-                  <span className="badge">第二阶段</span>
+                  <div className="tool-card-desc">把网页保存成 PDF。</div>
+                  <span className="badge">即将推出</span>
                 </div>
                 <span className="row-chevron">
                   <IconChevron size={18} />
@@ -115,16 +111,14 @@ export function Home() {
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
         >
-          <span className="drop-icon mobile-only">
+          <span className="drop-icon">
             <IconDocPlus size={28} />
           </span>
-          <span className="drop-icon desktop-only">
-            <IconCloud size={28} />
-          </span>
-          <div>电脑上也可以把 PDF 拖到这里打开</div>
+          <div className="drop-copy mobile-only">点这里选择 PDF</div>
+          <div className="drop-copy desktop-only">把 PDF 拖到这里，也可以点这里选择</div>
         </div>
 
-        <p className="home-foot">手机点选文件，电脑支持拖拽。导出前不会上传到服务器。</p>
+        <p className="home-foot">文件只在这台设备上处理，不会上传。</p>
       </div>
       <Toast message={toast} />
     </div>

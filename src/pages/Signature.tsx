@@ -93,10 +93,10 @@ export function Signature() {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         />
-        {!hasDrawn && <div className="sig-hint">在此区域手写签名</div>}
+        {!hasDrawn && <div className="sig-hint">在这里写下签名</div>}
       </div>
       <button className="danger-btn" onClick={clear}>
-        清除重签
+        清除，重新签
       </button>
     </div>
   );

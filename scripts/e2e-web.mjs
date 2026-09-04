@@ -49,7 +49,7 @@ await page.screenshot({ path: `${outDir}/home_desktop.png`, fullPage: true });
 console.log('home ok');
 
 await page.getByRole('button', { name: '网页转 PDF' }).click();
-await page.getByRole('heading', { name: '这个功能还没有实现' }).waitFor();
+await page.getByRole('heading', { name: '这个功能还在准备' }).waitFor();
 const webBack = page.getByRole('button', { name: '返回' });
 await assertNavInline(webBack, 'web-to-pdf back');
 await page.screenshot({ path: `${outDir}/web_to_pdf_topbar.png`, clip: { x: 0, y: 0, width: 420, height: 72 } });
@@ -129,7 +129,7 @@ await page.getByText('2 / 3').waitFor({ timeout: 8000 });
 console.log('added blank page');
 
 await page.getByRole('button', { name: '文字' }).click();
-await page.getByPlaceholder('输入要加到当前页的文字').fill('本地导出测试');
+await page.getByPlaceholder('输入要加到这一页的文字').fill('本地导出测试');
 await page.getByRole('button', { name: '添加到页面' }).click();
 await page.getByText('本地导出测试').waitFor();
 console.log('added text');
@@ -174,7 +174,7 @@ await mobile.screenshot({ path: `${outDir}/home_mobile.png`, fullPage: true });
 console.log('mobile home ok');
 
 await mobile.getByRole('button', { name: '网页转 PDF' }).click();
-await mobile.getByRole('heading', { name: '这个功能还没有实现' }).waitFor();
+await mobile.getByRole('heading', { name: '这个功能还在准备' }).waitFor();
 const mobileBack = mobile.getByRole('button', { name: '返回' });
 await assertNavInline(mobileBack, 'mobile web-to-pdf back');
 await mobile.screenshot({ path: `${outDir}/web_to_pdf_mobile_topbar.png`, clip: { x: 0, y: 0, width: 390, height: 80 } });

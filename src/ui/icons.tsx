@@ -33,8 +33,8 @@ export function IconEdit(props: IconProps) {
 export function IconMerge(props: IconProps) {
   return (
     <Svg {...props}>
-      <rect x="3" y="4" width="8" height="10" rx="1.5" />
-      <rect x="13" y="10" width="8" height="10" rx="1.5" />
+      <rect x="4" y="3.5" width="10" height="14" rx="1.6" />
+      <rect x="10" y="6.5" width="10" height="14" rx="1.6" />
     </Svg>
   );
 }
