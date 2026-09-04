@@ -55,8 +55,9 @@ await page.getByLabel('打赏金额').fill('12.5');
 await page.getByRole('tab', { name: '微信' }).waitFor();
 await page.getByRole('tab', { name: '支付宝' }).click();
 await page.getByRole('tab', { name: '微信' }).click();
+await page.getByRole('button', { name: '去打赏支付' }).waitFor();
 await page.screenshot({ path: `${outDir}/home_tip_sheet.png` });
-await page.getByRole('button', { name: '关闭' }).click();
+await page.getByRole('button', { name: '取消' }).click();
 await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
 console.log('home ok');
 

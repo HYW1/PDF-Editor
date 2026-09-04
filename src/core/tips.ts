@@ -4,11 +4,13 @@ export const TIP_CODES = {
   wechat: {
     label: '微信',
     src: './tip/wechat.png',
+    payUrl: '',
     hint: '把微信收款码截图存成 public/tip/wechat.png，刷新即可。'
   },
   alipay: {
     label: '支付宝',
     src: './tip/alipay.png',
+    payUrl: '',
     hint: '把支付宝收款码截图存成 public/tip/alipay.png，刷新即可。'
   }
 } as const;

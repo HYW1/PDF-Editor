@@ -1,4 +1,5 @@
 import { useState, type DragEvent } from 'react';
+import { isAppPayUrl, readPayUrl } from '../core/pay-url';
 import { pickFiles } from '../core/files';
 import { loadPdfFile } from '../core/pdf-engine';
 import { downloadPageImages, renderPagesToPngs } from '../core/pdf-to-images';
@@ -77,6 +78,34 @@ export function Home() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function goTipPay() {
+    const value = formatTipAmount(tipAmount);
+    if (!value) {
+      showToast('请先填写金额');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      /* ignore */
+    }
+    if (tipQrMissing[tipPay]) {
+      showToast(`还没放${TIP_CODES[tipPay].label}收款码`);
+      return;
+    }
+    const url = await readPayUrl(tipPay);
+    if (!url) {
+      showToast(`还没识别到${TIP_CODES[tipPay].label}收款码`);
+      return;
+    }
+    const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+    if (!mobile && isAppPayUrl(url)) {
+      showToast('请用手机点去打赏支付，电脑上请扫码');
+      return;
+    }
+    window.location.href = url;
   }
 
   async function onDrop(event: DragEvent) {
@@ -276,26 +305,11 @@ export function Home() {
                 />
               )}
             </div>
-            <button
-              className="ghost-btn tip-copy-btn"
-              onClick={async () => {
-                const value = formatTipAmount(tipAmount);
-                if (!value) {
-                  showToast('请先填写金额');
-                  return;
-                }
-                try {
-                  await navigator.clipboard.writeText(value);
-                  showToast(`已复制 ¥${value}，扫码后请填这个金额`);
-                } catch {
-                  showToast(`请扫码后输入 ¥${value}`);
-                }
-              }}
-            >
-              复制金额
+            <button className="primary-btn tip-pay-btn" onClick={() => void goTipPay()}>
+              去打赏支付
             </button>
             <button className="sheet-cancel" onClick={() => setTipOpen(false)}>
-              关闭
+              取消
             </button>
           </div>
         </>

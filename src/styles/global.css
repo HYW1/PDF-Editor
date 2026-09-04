@@ -325,6 +325,12 @@ button {
   margin: 10px 4px 0;
 }
 
+.primary-btn.tip-pay-btn {
+  display: block;
+  width: calc(100% - 8px);
+  margin: 12px 4px 0;
+}
+
 .sheet-note {
   margin: 10px 4px 0;
   font-size: 12px;
