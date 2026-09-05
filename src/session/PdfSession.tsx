@@ -111,6 +111,7 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const goHome = useCallback(() => {
+    void import('../core/pdf-render').then((mod) => mod.clearRenderCache());
     setView('home');
     setFileName(empty.fileName);
     setDocs({});

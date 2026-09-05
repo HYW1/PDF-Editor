@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { usePdfSession } from '../session/PdfSession';
 import { NavBackLabel } from '../ui/NavBackLabel';
-import { PageCanvas } from '../ui/PageCanvas';
+import { VisiblePageCanvas } from '../ui/PageCanvas';
 
 export function PageSelector() {
   const { pendingDoc, pendingPages, confirmAddPdf, cancelAddPdf } = usePdfSession();
@@ -47,7 +47,7 @@ export function PageSelector() {
             className={`selector-item ${selected[index] ? 'selected' : ''}`}
             onClick={() => toggle(index)}
           >
-            <PageCanvas page={page} docs={docs} maxWidth={140} />
+            <VisiblePageCanvas page={page} docs={docs} maxWidth={140} quality="thumb" eager={index < 12} />
             {selected[index] && <span className="check">✓</span>}
           </button>
         ))}

@@ -1,7 +1,5 @@
-import { useState, type DragEvent } from 'react';
+import { useEffect, useState, type DragEvent } from 'react';
 import { pickFiles } from '../core/files';
-import { loadPdfFile } from '../core/pdf-engine';
-import { downloadPageImages, renderPagesToPngs } from '../core/pdf-to-images';
 import { usePdfSession } from '../session/PdfSession';
 import { IconChevron, IconEdit, IconImage, IconMerge, IconPdfToImage, IconWeb } from '../ui/icons';
 import { Toast } from '../ui/Toast';
@@ -22,6 +20,18 @@ export function Home() {
   const [toast, setToast] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const warm = () => {
+      void import('../core/pdf-render').then((mod) => mod.warmupPdfEngine());
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+      const idleId = window.requestIdleCallback(warm);
+      return () => window.cancelIdleCallback(idleId);
+    }
+    const timeoutId = window.setTimeout(warm, 400);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   function showToast(message: string) {
     setToast(message);
@@ -55,6 +65,10 @@ export function Home() {
       if (!files[0]) return;
       setBusy(true);
       showToast('正在导出图片…');
+      const [{ loadPdfFile }, { renderPagesToPngs, downloadPageImages }] = await Promise.all([
+        import('../core/pdf-engine'),
+        import('../core/pdf-to-images')
+      ]);
       const loaded = await loadPdfFile(files[0]);
       const images = await renderPagesToPngs(
         loaded.pages,

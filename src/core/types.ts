@@ -10,6 +10,7 @@ export interface PageInfo {
   width: number;
   height: number;
   rotation: number;
+  nativeRotation?: number;
   source: PageSource;
 }
 
@@ -31,6 +32,7 @@ export interface LoadedDoc {
   id: string;
   name: string;
   bytes: ArrayBuffer;
+  pageCount: number;
 }
 
 export interface UserQuota {

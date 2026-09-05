@@ -22,7 +22,7 @@ import {
   IconTrash,
   IconUndo
 } from '../ui/icons';
-import { PageCanvas } from '../ui/PageCanvas';
+import { PageCanvas, VisiblePageCanvas } from '../ui/PageCanvas';
 import { Toast } from '../ui/Toast';
 import { useIsDesktop } from '../ui/useMedia';
 
@@ -197,7 +197,9 @@ export function Editor() {
     try {
       setExporting(true);
       showToast(quality === 'original' ? '正在导出…' : '正在压缩…');
-      let bytes = await exportPdf(pages, docs, annotations);
+      let bytes = await exportPdf(pages, docs, annotations, (done, total) => {
+        showToast(quality === 'original' ? `正在导出 ${done}/${total}` : `正在整理 ${done}/${total}`);
+      });
       if (quality !== 'original') {
         unlockWithAd();
         bytes = await compressPdfBytes(bytes, quality, (done, total) => {
@@ -328,7 +330,7 @@ export function Editor() {
             ref={stageRef}
             onPointerDown={(event) => event.stopPropagation()}
           >
-            <PageCanvas page={currentPage} docs={docs} maxWidth={previewWidth} />
+            <PageCanvas page={currentPage} docs={docs} maxWidth={previewWidth} quality="preview" />
             <AnnotationLayer
               annotations={pageAnns}
               selectedId={selectedAnnotationId}
@@ -430,7 +432,13 @@ export function Editor() {
               if (!Number.isNaN(from)) session.reorderPage(from, index);
             }}
           >
-            <PageCanvas page={page} docs={docs} maxWidth={54} />
+            <VisiblePageCanvas
+              page={page}
+              docs={docs}
+              maxWidth={54}
+              quality="thumb"
+              eager={index === currentPageIndex || index < 8}
+            />
             <span className="thumb-index">{index + 1}</span>
           </div>
         ))}

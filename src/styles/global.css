@@ -40,6 +40,26 @@ button {
 
 .app-shell { min-height: 100dvh; }
 
+.app-loading {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  color: var(--text-hint);
+  font-size: 14px;
+}
+
+.page-canvas-slot {
+  display: block;
+  width: 100%;
+}
+
+.page-canvas-skel {
+  width: 100%;
+  aspect-ratio: 1 / 1.414;
+  border-radius: 2px;
+  background: #ececec;
+}
+
 /* Home */
 .home {
   min-height: 100dvh;

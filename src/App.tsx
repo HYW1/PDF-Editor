@@ -1,9 +1,11 @@
-import { Editor } from './pages/Editor';
+import { lazy, Suspense } from 'react';
 import { Home } from './pages/Home';
-import { PageSelector } from './pages/PageSelector';
-import { Signature } from './pages/Signature';
-import { WebToPdf } from './pages/WebToPdf';
 import { PdfSessionProvider, usePdfSession } from './session/PdfSession';
+
+const Editor = lazy(async () => ({ default: (await import('./pages/Editor')).Editor }));
+const Signature = lazy(async () => ({ default: (await import('./pages/Signature')).Signature }));
+const PageSelector = lazy(async () => ({ default: (await import('./pages/PageSelector')).PageSelector }));
+const WebToPdf = lazy(async () => ({ default: (await import('./pages/WebToPdf')).WebToPdf }));
 
 function Screen() {
   const { view } = usePdfSession();
@@ -18,7 +20,9 @@ export function App() {
   return (
     <PdfSessionProvider>
       <div className="app-shell">
-        <Screen />
+        <Suspense fallback={<div className="app-loading">正在打开…</div>}>
+          <Screen />
+        </Suspense>
       </div>
     </PdfSessionProvider>
   );

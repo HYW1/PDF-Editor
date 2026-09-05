@@ -70,7 +70,7 @@ export async function renderPagesToPngs(
     onProgress?.(index + 1, pages.length);
     const page = pages[index];
     const canvas = document.createElement('canvas');
-    await renderPageToCanvas(canvas, page, docs, 1400);
+    await renderPageToCanvas(canvas, page, docs, 1400, 'export');
     const pageAnns = annotations.filter((item) => item.pageId === page.id);
     await drawAnnotations(canvas, pageAnns, page);
     const data = await canvasToPng(canvas);

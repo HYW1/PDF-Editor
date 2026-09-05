@@ -53,7 +53,7 @@ export async function compressPdfBytes(
     await new Promise((resolve) => window.setTimeout(resolve, 0));
   }
 
-  return out.save({ useObjectStreams: true });
+  return out.save({ useObjectStreams: false });
 }
 
 function canvasToJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Uint8Array> {

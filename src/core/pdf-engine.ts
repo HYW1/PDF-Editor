@@ -1,13 +1,3 @@
-import {
-  PDFDocument,
-  degrees,
-  rgb,
-  clip,
-  endPath,
-  popGraphicsState,
-  pushGraphicsState,
-  rectangle
-} from 'pdf-lib';
 import { generateId } from './id';
 import { fitImage } from './image-fit';
 import type { Annotation, FitMode, LoadedDoc, PageInfo } from './types';
@@ -27,19 +17,32 @@ export async function loadPdfBytes(
   bytes: ArrayBuffer,
   name: string
 ): Promise<{ doc: LoadedDoc; pages: PageInfo[] }> {
-  const safeBytes = copyBuffer(bytes);
-  const pdf = await PDFDocument.load(safeBytes, { ignoreEncryption: true });
-  const doc: LoadedDoc = { id: generateId('doc'), name, bytes: copyBuffer(safeBytes) };
-  const pages: PageInfo[] = pdf.getPages().map((page, pageIndex) => {
-    const { width, height } = page.getSize();
-    return {
-      id: generateId('page'),
-      width,
-      height,
-      rotation: normalizeRotation(page.getRotation().angle),
-      source: { kind: 'pdf', docId: doc.id, pageIndex }
-    };
-  });
+  const { primePdfJsDoc } = await import('./pdf-render');
+  const safeBytes = bytes.byteLength ? bytes : copyBuffer(bytes);
+  const docId = generateId('doc');
+  const pdf = await primePdfJsDoc(docId, safeBytes);
+  const pageCount = pdf.numPages;
+  const pages: PageInfo[] = [];
+  const batch = 8;
+  for (let start = 1; start <= pageCount; start += batch) {
+    const end = Math.min(pageCount, start + batch - 1);
+    const slice = await Promise.all(
+      Array.from({ length: end - start + 1 }, (_, offset) => pdf.getPage(start + offset))
+    );
+    for (const [offset, pdfPage] of slice.entries()) {
+      const viewport = pdfPage.getViewport({ scale: 1, rotation: 0 });
+      const rotation = normalizeRotation(pdfPage.rotate || 0);
+      pages.push({
+        id: generateId('page'),
+        width: viewport.width,
+        height: viewport.height,
+        rotation,
+        nativeRotation: rotation,
+        source: { kind: 'pdf', docId, pageIndex: start + offset - 1 }
+      });
+    }
+  }
+  const doc: LoadedDoc = { id: docId, name, bytes: safeBytes, pageCount };
   return { doc, pages };
 }
 
@@ -87,7 +90,7 @@ export async function makeImagePages(
 }
 
 export function rotatePage(page: PageInfo, delta = 90): PageInfo {
-  return { ...page, rotation: normalizeRotation(page.rotation + delta) };
+  return { ...page, rotation: normalizeRotation(page.rotation + delta), nativeRotation: page.nativeRotation };
 }
 
 export function movePage(pages: PageInfo[], from: number, to: number): PageInfo[] {
@@ -110,48 +113,132 @@ export function insertPages(
   return [...pages.slice(0, at), ...incoming, ...pages.slice(at)];
 }
 
-export async function exportPdf(
+function canPassthroughOriginal(
   pages: PageInfo[],
   docs: Record<string, LoadedDoc>,
   annotations: Annotation[]
-): Promise<Uint8Array> {
-  const out = await PDFDocument.create();
-  const loadedCache = new Map<string, PDFDocument>();
+): ArrayBuffer | null {
+  if (annotations.length || !pages.length) return null;
+  const first = pages[0];
+  if (first.source.kind !== 'pdf') return null;
+  const doc = docs[first.source.docId];
+  if (!doc || pages.length !== doc.pageCount) return null;
+  for (let index = 0; index < pages.length; index += 1) {
+    const page = pages[index];
+    if (page.source.kind !== 'pdf') return null;
+    if (page.source.docId !== first.source.docId || page.source.pageIndex !== index) return null;
+    if (page.rotation !== (page.nativeRotation ?? 0)) return null;
+  }
+  return doc.bytes;
+}
 
-  for (const page of pages) {
-    const dest = await appendPage(out, page, docs, loadedCache);
+export async function exportPdf(
+  pages: PageInfo[],
+  docs: Record<string, LoadedDoc>,
+  annotations: Annotation[],
+  onProgress?: (done: number, total: number) => void
+): Promise<Uint8Array> {
+  const original = canPassthroughOriginal(pages, docs, annotations);
+  if (original) {
+    onProgress?.(pages.length, pages.length);
+    return new Uint8Array(original.slice(0));
+  }
+
+  const { PDFDocument, degrees } = await import('pdf-lib');
+
+  const out = await PDFDocument.create();
+  const neededIds = [
+    ...new Set(
+      pages.flatMap((page) => (page.source.kind === 'pdf' ? [page.source.docId] : []))
+    )
+  ];
+  const loadedCache = new Map<string, Awaited<ReturnType<typeof PDFDocument.load>>>();
+  await Promise.all(
+    neededIds.map(async (docId) => {
+      const doc = docs[docId];
+      if (!doc) throw new Error('源 PDF 不存在');
+      loadedCache.set(
+        docId,
+        await PDFDocument.load(copyBuffer(doc.bytes), { ignoreEncryption: true, updateMetadata: false })
+      );
+    })
+  );
+
+  const unusedCopies = new Map<string, ReturnType<typeof out.addPage>[]>();
+  for (const docId of neededIds) {
+    const src = loadedCache.get(docId);
+    if (!src) continue;
+    const indices = [
+      ...new Set(
+        pages.flatMap((page) =>
+          page.source.kind === 'pdf' && page.source.docId === docId ? [page.source.pageIndex] : []
+        )
+      )
+    ].sort((a, b) => a - b);
+    if (!indices.length) continue;
+    const copied = await out.copyPages(src, indices);
+    for (let i = 0; i < indices.length; i += 1) {
+      const key = `${docId}:${indices[i]}`;
+      const list = unusedCopies.get(key) || [];
+      list.push(copied[i]);
+      unusedCopies.set(key, list);
+    }
+  }
+
+  const annsByPage = new Map<string, Annotation[]>();
+  for (const item of annotations) {
+    const list = annsByPage.get(item.pageId) || [];
+    list.push(item);
+    annsByPage.set(item.pageId, list);
+  }
+
+  for (let index = 0; index < pages.length; index += 1) {
+    const page = pages[index];
+    onProgress?.(index + 1, pages.length);
+    const dest = await appendPage(out, page, loadedCache, unusedCopies);
     if (page.rotation) {
       dest.setRotation(degrees(page.rotation));
     }
-    const pageAnns = annotations.filter((item) => item.pageId === page.id);
+    const pageAnns = annsByPage.get(page.id) || [];
     for (const ann of pageAnns) {
       await drawAnnotation(out, dest, page, ann);
     }
   }
 
-  return out.save({ useObjectStreams: true });
+  return out.save({ useObjectStreams: false });
+}
+
+async function takeCopiedPage(
+  out: Awaited<ReturnType<(typeof import('pdf-lib'))['PDFDocument']['create']>>,
+  src: Awaited<ReturnType<(typeof import('pdf-lib'))['PDFDocument']['load']>>,
+  unusedCopies: Map<string, ReturnType<typeof out.addPage>[]>,
+  docId: string,
+  pageIndex: number
+) {
+  const key = `${docId}:${pageIndex}`;
+  const queued = unusedCopies.get(key);
+  const ready = queued?.pop();
+  if (ready) return ready;
+  const [copied] = await out.copyPages(src, [pageIndex]);
+  return copied;
 }
 
 async function appendPage(
-  out: PDFDocument,
+  out: Awaited<ReturnType<(typeof import('pdf-lib'))['PDFDocument']['create']>>,
   page: PageInfo,
-  docs: Record<string, LoadedDoc>,
-  loadedCache: Map<string, PDFDocument>
+  loadedCache: Map<string, Awaited<ReturnType<(typeof import('pdf-lib'))['PDFDocument']['load']>>>,
+  unusedCopies: Map<string, ReturnType<typeof out.addPage>[]>
 ) {
   if (page.source.kind === 'pdf') {
-    let src = loadedCache.get(page.source.docId);
-    if (!src) {
-      const doc = docs[page.source.docId];
-      if (!doc) throw new Error('源 PDF 不存在');
-      src = await PDFDocument.load(copyBuffer(doc.bytes), { ignoreEncryption: true });
-      loadedCache.set(page.source.docId, src);
-    }
-    const [copied] = await out.copyPages(src, [page.source.pageIndex]);
+    const src = loadedCache.get(page.source.docId);
+    if (!src) throw new Error('源 PDF 不存在');
+    const copied = await takeCopiedPage(out, src, unusedCopies, page.source.docId, page.source.pageIndex);
     out.addPage(copied);
     return copied;
   }
 
   const dest = out.addPage([page.width, page.height]);
+  const { rgb, clip, endPath, popGraphicsState, pushGraphicsState, rectangle } = await import('pdf-lib');
 
   if (page.source.kind === 'blank') {
     dest.drawRectangle({
@@ -188,7 +275,11 @@ async function appendPage(
   return dest;
 }
 
-async function embedJpegSafe(out: PDFDocument, original: ArrayBuffer, pngFallback: Uint8Array) {
+async function embedJpegSafe(
+  out: Awaited<ReturnType<(typeof import('pdf-lib'))['PDFDocument']['create']>>,
+  original: ArrayBuffer,
+  pngFallback: Uint8Array
+) {
   try {
     return await out.embedJpg(original);
   } catch {
@@ -197,11 +288,12 @@ async function embedJpegSafe(out: PDFDocument, original: ArrayBuffer, pngFallbac
 }
 
 async function drawAnnotation(
-  out: PDFDocument,
-  dest: ReturnType<PDFDocument['addPage']>,
+  out: Awaited<ReturnType<(typeof import('pdf-lib'))['PDFDocument']['create']>>,
+  dest: ReturnType<Awaited<ReturnType<(typeof import('pdf-lib'))['PDFDocument']['create']>>['addPage']>,
   page: PageInfo,
   ann: Annotation
 ) {
+  const { rgb } = await import('pdf-lib');
   const x = ann.x * page.width;
   const y = page.height - (ann.y + ann.height) * page.height;
   const width = ann.width * page.width;
