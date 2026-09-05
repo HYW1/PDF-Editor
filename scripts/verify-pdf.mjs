@@ -93,3 +93,23 @@ console.log('pdf operations ok', {
   rotation: check.getPage(0).getRotation().angle,
   bytes: outBytes.length
 });
+
+const first = await PDFDocument.create();
+first.addPage([300, 400]).drawText('One', { x: 40, y: 200, size: 20 });
+first.addPage([300, 400]).drawText('Two', { x: 40, y: 200, size: 20 });
+const second = await PDFDocument.create();
+second.addPage([320, 420]).drawText('Three', { x: 40, y: 200, size: 20 });
+const merged = await PDFDocument.create();
+const firstLoaded = await PDFDocument.load(await first.save());
+const secondLoaded = await PDFDocument.load(await second.save());
+for (const page of await merged.copyPages(firstLoaded, firstLoaded.getPageIndices())) {
+  merged.addPage(page);
+}
+for (const page of await merged.copyPages(secondLoaded, secondLoaded.getPageIndices())) {
+  merged.addPage(page);
+}
+const mergedBytes = await merged.save({ useObjectStreams: true });
+const mergedCheck = await PDFDocument.load(mergedBytes);
+assert(mergedCheck.getPageCount() === 3, `merged page count ${mergedCheck.getPageCount()}, expected 3`);
+assert(mergedBytes.byteLength > 200, 'merged PDF should not be empty');
+console.log('merge pdf ok', { pages: mergedCheck.getPageCount(), bytes: mergedBytes.byteLength });

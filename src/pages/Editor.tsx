@@ -48,6 +48,7 @@ export function Editor() {
   const [editingLine, setEditingLine] = useState<TextLine | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [savedExport, setSavedExport] = useState<{ name: string; bytes: Uint8Array } | null>(null);
   const [pendingQuality, setPendingQuality] = useState<Exclude<ExportQuality, 'original'> | null>(null);
   const [adLeft, setAdLeft] = useState(AD_SECONDS);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -206,8 +207,9 @@ export function Editor() {
       recordExport();
       const suffix = quality === 'original' ? '_编辑.pdf' : `_压缩${quality === 'high' ? '高' : quality === 'medium' ? '中' : '低'}.pdf`;
       const name = fileName.replace(/\.pdf$/i, '') + suffix;
+      setSavedExport({ name, bytes });
       downloadBytes(bytes, name);
-      showToast('已导出新的 PDF');
+      showToast('已导出新的 PDF。如果没看到文件，点下方再保存');
     } catch (error) {
       console.error(error);
       showToast(error instanceof Error ? error.message : '导出失败');
@@ -247,39 +249,53 @@ export function Editor() {
   return (
     <div className="editor">
       <div className="topbar">
-        <div className="topbar-left">
-          <button className="nav-btn" onClick={session.goHome}>
-            <NavBackLabel>返回</NavBackLabel>
-          </button>
-          <div className="file-name">{fileName}</div>
-        </div>
-        <div className="topbar-right">
-          <div className="history-btns">
-            <IconTip label="撤回到上一步">
-              <button
-                className="icon-btn"
-                disabled={!canUndo}
-                onClick={session.undo}
-                aria-label="撤回到上一步"
-              >
-                <IconUndo size={22} />
-              </button>
-            </IconTip>
-            <IconTip label="重做上一步">
-              <button
-                className="icon-btn"
-                disabled={!canRedo}
-                onClick={session.redo}
-                aria-label="重做上一步"
-              >
-                <IconRedo size={22} />
-              </button>
-            </IconTip>
+        <div className="topbar-main">
+          <div className="topbar-left">
+            <button className="nav-btn" onClick={session.goHome}>
+              <NavBackLabel>返回</NavBackLabel>
+            </button>
+            <div className="file-name">{fileName}</div>
           </div>
-          <button className="export-btn" onClick={onExport} disabled={exporting}>
-            {exporting ? '导出中' : '导出'}
-          </button>
+          <div className="topbar-right">
+            <div className="history-btns">
+              <IconTip label="撤回到上一步">
+                <button
+                  className="icon-btn"
+                  disabled={!canUndo}
+                  onClick={session.undo}
+                  aria-label="撤回到上一步"
+                >
+                  <IconUndo size={22} />
+                </button>
+              </IconTip>
+              <IconTip label="重做上一步">
+                <button
+                  className="icon-btn"
+                  disabled={!canRedo}
+                  onClick={session.redo}
+                  aria-label="重做上一步"
+                >
+                  <IconRedo size={22} />
+                </button>
+              </IconTip>
+            </div>
+            <button className="export-btn" onClick={onExport} disabled={exporting}>
+              {exporting ? '导出中' : '导出'}
+            </button>
+          </div>
         </div>
+        {savedExport && (
+          <div className="export-ready">
+            <span>文件已生成，可再保存到设备</span>
+            <button
+              type="button"
+              className="export-ready-btn"
+              onClick={() => downloadBytes(savedExport.bytes, savedExport.name)}
+            >
+              再保存
+            </button>
+          </div>
+        )}
       </div>
 
       <div

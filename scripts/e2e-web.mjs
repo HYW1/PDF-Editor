@@ -204,6 +204,32 @@ await page.screenshot({ path: `${outDir}/editor_after_edits.png` });
 await page.getByRole('button', { name: '返回', exact: true }).click();
 await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
 
+const [mergeChooser] = await Promise.all([
+  page.waitForEvent('filechooser'),
+  page.getByRole('button', { name: '合并 PDF' }).click()
+]);
+await mergeChooser.setFiles(['public/sample.pdf', 'public/sample.pdf']);
+await page.getByText('1 / 6').waitFor({ timeout: 15000 });
+await page.getByText('合并_2个文件.pdf').waitFor();
+await page.getByRole('button', { name: '导出' }).click();
+const mergeDownload = page.waitForEvent('download', { timeout: 20000 });
+await page.getByRole('button', { name: '直接导出' }).click();
+const mergedFile = await mergeDownload;
+const mergedPath = `${outDir}/exported_merged.pdf`;
+await mergedFile.saveAs(mergedPath);
+const mergedPdf = await PDFDocument.load(await readFile(mergedPath));
+if (mergedPdf.getPageCount() !== 6) {
+  throw new Error(`merged export page count ${mergedPdf.getPageCount()}, expected 6`);
+}
+if (!mergedFile.suggestedFilename().includes('合并')) {
+  throw new Error(`merged export name should keep 合并, got ${mergedFile.suggestedFilename()}`);
+}
+await page.getByRole('button', { name: '再保存' }).waitFor();
+await page.screenshot({ path: `${outDir}/merge_export_saved.png` });
+console.log('merged export ok', mergedFile.suggestedFilename(), 'pages', mergedPdf.getPageCount());
+await page.getByRole('button', { name: '返回', exact: true }).click();
+await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
+
 const [imageChooser] = await Promise.all([
   page.waitForEvent('filechooser'),
   page.getByRole('button', { name: '图片转 PDF' }).click()
