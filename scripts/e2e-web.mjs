@@ -120,7 +120,7 @@ if (extracted.pages < 2) {
 }
 console.log('web-to-pdf api ok', { pages: extracted.pages, width: pdfWidth });
 
-await page.getByLabel('网址').fill(fixtureUrl);
+await page.getByLabel('网址').fill(`测试页\n${fixtureUrl}\n点击查看`);
 await page.getByRole('button', { name: '生成 PDF' }).click();
 await page.getByText(/1 \/ \d+/).waitFor({ timeout: 40000 });
 await page.screenshot({ path: `${outDir}/web_to_pdf_editor.png` });

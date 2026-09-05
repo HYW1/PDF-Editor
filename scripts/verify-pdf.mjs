@@ -46,6 +46,19 @@ assert(
   parsePageUrl('http://localhost/x', { allowPrivate: true }).href === 'http://localhost/x',
   'allow localhost when asked'
 );
+assert(
+  parsePageUrl('这是标题\nhttps://mp.weixin.qq.com/s/abcDEF123\n点击查看').href ===
+    'https://mp.weixin.qq.com/s/abcDEF123',
+  'extract wechat url from share text'
+);
+assert(
+  parsePageUrl('https://mp.weixin.qq.com/s/abc 还有一段说明').href === 'https://mp.weixin.qq.com/s/abc',
+  'trim trailing chinese after wechat url'
+);
+assert(
+  parsePageUrl('weixin://dl/business/?ticket=1').error === '请用微信里「复制链接」得到的 https 网址',
+  'reject weixin scheme'
+);
 
 const webPdf = pdfOptionsForWebPage({ width: 1280, height: 2400 });
 assert(webPdf.width === '1280px', `web pdf width ${webPdf.width}`);

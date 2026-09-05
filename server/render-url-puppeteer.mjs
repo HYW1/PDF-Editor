@@ -1,11 +1,13 @@
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import {
-  WEB_PDF_VIEWPORT,
-  measureWebPageSize,
-  pdfOptionsForWebPage,
-  prepareWebPageForPdf
-} from './prepare-web-pdf.mjs';
+  finishOpenPage,
+  headersForUrl,
+  stealthScript,
+  userAgentForUrl,
+  viewportForUrl
+} from './open-web-page.mjs';
+import { pdfOptionsForWebPage } from './prepare-web-pdf.mjs';
 
 chromium.setGraphicsMode = false;
 
@@ -48,12 +50,12 @@ async function getBrowser() {
   browserPromise = (async () => {
     await ensureCjkFont();
     const args = await puppeteer.defaultArgs({
-      args: chromium.args,
+      args: [...chromium.args, '--disable-blink-features=AutomationControlled'],
       headless: 'shell'
     });
     return puppeteer.launch({
       args,
-      defaultViewport: WEB_PDF_VIEWPORT,
+      defaultViewport: viewportForUrl('https://example.com'),
       executablePath: await chromium.executablePath(),
       headless: 'shell'
     });
@@ -67,19 +69,20 @@ export async function renderUrlToPdf(targetUrl, onProgress) {
   onProgress?.(22, '正在打开网页');
   const page = await browser.newPage();
   try {
-    await page.setExtraHTTPHeaders({ 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8' });
+    await page.setUserAgent(userAgentForUrl(targetUrl));
+    await page.setViewport(viewportForUrl(targetUrl));
+    await page.setExtraHTTPHeaders(headersForUrl(targetUrl));
+    await page.evaluateOnNewDocument(stealthScript);
     await page.emulateMediaType('screen');
     page.on('load', () => onProgress?.(58, '网页已打开'));
     onProgress?.(32, '正在打开网页');
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 28000 });
+    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 40000 });
     await page.waitForNetworkIdle({ idleTime: 500, timeout: 8000 }).catch(() => {});
-    onProgress?.(74, '正在整理页面');
-    await prepareWebPageForPdf(page);
+    const { size, name } = await finishOpenPage(page, targetUrl, onProgress);
     onProgress?.(86, '正在生成 PDF');
-    const size = await measureWebPageSize(page);
     const bytes = await page.pdf(pdfOptionsForWebPage(size));
     onProgress?.(96, '即将完成');
-    return bytes;
+    return { bytes, name };
   } finally {
     await page.close().catch(() => {});
   }

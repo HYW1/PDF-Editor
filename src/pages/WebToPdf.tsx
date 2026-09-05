@@ -154,11 +154,11 @@ export function WebToPdf() {
         <input
           id="web-url"
           className="web-input"
-          type="url"
+          type="text"
           inputMode="url"
           autoCapitalize="off"
           autoCorrect="off"
-          placeholder="https://example.com"
+          placeholder="粘贴网址，微信文章用「复制链接」"
           value={url}
           disabled={busy}
           onChange={(event) => setUrl(event.target.value)}
@@ -182,7 +182,9 @@ export function WebToPdf() {
             </div>
           </div>
         )}
-        <p className="web-note">会在服务器里打开这个网址再生成 PDF，不会保存你的文件。需要登录或验证码的页面可能转不全。</p>
+        <p className="web-note">
+          公开网页都能转，直接粘贴链接即可，微信文章用「复制链接」。要登录或验证码的页面转不了，文件也不会上传保存。
+        </p>
       </div>
       <Toast message={toast} />
     </div>

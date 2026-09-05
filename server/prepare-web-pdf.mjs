@@ -1,5 +1,30 @@
 export const WEB_PDF_VIEWPORT = { width: 1280, height: 900, deviceScaleFactor: 1 };
 
+export async function revealSiteContent(page) {
+  await page.evaluate(async () => {
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    document.querySelectorAll('img[data-src], img[data-original]').forEach((img) => {
+      const next = img.dataset.src || img.dataset.original;
+      if (next && (!img.getAttribute('src') || img.src.startsWith('data:'))) img.src = next;
+    });
+    document.querySelectorAll('#js_content, .rich_media_content, #img-content').forEach((el) => {
+      el.style.setProperty('visibility', 'visible', 'important');
+      el.style.setProperty('display', 'block', 'important');
+      el.style.setProperty('opacity', '1', 'important');
+      el.style.setProperty('height', 'auto', 'important');
+      el.style.setProperty('max-height', 'none', 'important');
+    });
+    document.querySelectorAll('#js_pc_qr_code, .qr_code_pc, #js_top_ad, .rich_media_area_extra').forEach((el) => {
+      el.style.setProperty('display', 'none', 'important');
+    });
+    const expand = [...document.querySelectorAll('a, button, span')].find((el) =>
+      /阅读全文|展开全文|查看全文|展开更多/.test(el.textContent || '')
+    );
+    expand?.click();
+    await wait(200);
+  });
+}
+
 export async function prepareWebPageForPdf(page) {
   await page.evaluate(async () => {
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -86,7 +111,7 @@ export async function measureWebPageSize(page) {
 }
 
 export function pdfOptionsForWebPage(size = {}) {
-  const width = Math.min(Math.max(Math.round(size.width || 1280), 1024), 1600);
+  const width = Math.min(Math.max(Math.round(size.width || 1280), 390), 1600);
   const pageHeight = Math.round((width * 297) / 210);
   return {
     width: `${width}px`,
