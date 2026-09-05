@@ -1,5 +1,12 @@
 import { parsePageUrl } from './parse-page-url.mjs';
 
+function contentDisposition(name) {
+  const fallback = 'webpage.pdf';
+  const raw = String(name || fallback).replace(/["\\\r\n]+/g, '').trim() || fallback;
+  const ascii = raw.replace(/[^\x20-\x7E]+/g, '_') || fallback;
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(raw)}`;
+}
+
 function unwrapPdfResult(result, fallbackName) {
   if (result && result.bytes) {
     return { bytes: result.bytes, name: result.name || fallbackName };
@@ -85,7 +92,7 @@ export function createWebToPdfHandler(renderUrlToPdf) {
       const { bytes, name } = unwrapPdfResult(result, fallbackName);
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+      res.setHeader('Content-Disposition', contentDisposition(name));
       res.end(Buffer.from(bytes));
     } catch (error) {
       console.error(error);
