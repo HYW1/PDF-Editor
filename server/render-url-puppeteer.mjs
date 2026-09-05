@@ -1,5 +1,11 @@
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
+import {
+  WEB_PDF_VIEWPORT,
+  measureWebPageSize,
+  pdfOptionsForWebPage,
+  prepareWebPageForPdf
+} from './prepare-web-pdf.mjs';
 
 chromium.setGraphicsMode = false;
 
@@ -47,7 +53,7 @@ async function getBrowser() {
     });
     return puppeteer.launch({
       args,
-      defaultViewport: { width: 1280, height: 900, deviceScaleFactor: 1 },
+      defaultViewport: WEB_PDF_VIEWPORT,
       executablePath: await chromium.executablePath(),
       headless: 'shell'
     });
@@ -62,17 +68,16 @@ export async function renderUrlToPdf(targetUrl, onProgress) {
   const page = await browser.newPage();
   try {
     await page.setExtraHTTPHeaders({ 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8' });
+    await page.emulateMediaType('screen');
     page.on('load', () => onProgress?.(58, '网页已打开'));
     onProgress?.(32, '正在打开网页');
-    await page.goto(targetUrl, { waitUntil: 'load', timeout: 25000 });
+    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 28000 });
+    await page.waitForNetworkIdle({ idleTime: 500, timeout: 8000 }).catch(() => {});
     onProgress?.(74, '正在整理页面');
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await prepareWebPageForPdf(page);
     onProgress?.(86, '正在生成 PDF');
-    const bytes = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '12mm', right: '12mm', bottom: '12mm', left: '12mm' }
-    });
+    const size = await measureWebPageSize(page);
+    const bytes = await page.pdf(pdfOptionsForWebPage(size));
     onProgress?.(96, '即将完成');
     return bytes;
   } finally {

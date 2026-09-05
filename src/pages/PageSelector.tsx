@@ -32,13 +32,15 @@ export function PageSelector() {
   return (
     <div className="subpage">
       <div className="topbar">
-        <button className="nav-btn" onClick={cancelAddPdf}>
-          <NavBackLabel>取消</NavBackLabel>
-        </button>
-        <div className="file-name">{pendingDoc?.name || '选择页面'}</div>
-        <button className="text-btn" onClick={toggleAll}>
-          {count === pendingPages.length ? '取消全选' : '全选'}
-        </button>
+        <div className="topbar-main">
+          <button className="nav-btn" onClick={cancelAddPdf}>
+            <NavBackLabel>取消</NavBackLabel>
+          </button>
+          <div className="file-name">{pendingDoc?.name || '选择页面'}</div>
+          <button className="text-btn" onClick={toggleAll}>
+            {count === pendingPages.length ? '取消全选' : '全选'}
+          </button>
+        </div>
       </div>
       <div className="selector-grid">
         {pendingPages.map((page, index) => (

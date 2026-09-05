@@ -1,5 +1,6 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
 import { parsePageUrl } from '../server/parse-page-url.mjs';
+import { pdfOptionsForWebPage } from '../server/prepare-web-pdf.mjs';
 
 function fitImage(imageW, imageH, pageW, pageH, mode) {
   if (mode === 'original') {
@@ -45,6 +46,12 @@ assert(
   parsePageUrl('http://localhost/x', { allowPrivate: true }).href === 'http://localhost/x',
   'allow localhost when asked'
 );
+
+const webPdf = pdfOptionsForWebPage({ width: 1280, height: 2400 });
+assert(webPdf.width === '1280px', `web pdf width ${webPdf.width}`);
+assert(webPdf.height === '1810px', `web pdf height ${webPdf.height}`);
+assert(webPdf.preferCSSPageSize === false, 'web pdf should ignore print page size');
+console.log('web pdf options ok');
 
 const { groupTextItems } = await import('../src/core/group-text-items.js');
 const grouped = groupTextItems([

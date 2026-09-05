@@ -1,4 +1,10 @@
 import { chromium } from 'playwright';
+import {
+  WEB_PDF_VIEWPORT,
+  measureWebPageSize,
+  pdfOptionsForWebPage,
+  prepareWebPageForPdf
+} from './prepare-web-pdf.mjs';
 
 let browserPromise = null;
 
@@ -25,7 +31,7 @@ export async function renderUrlToPdf(targetUrl, onProgress) {
   const browser = await getBrowser();
   onProgress?.(22, '正在打开网页');
   const page = await browser.newPage({
-    viewport: { width: 1280, height: 900 },
+    viewport: { width: WEB_PDF_VIEWPORT.width, height: WEB_PDF_VIEWPORT.height },
     locale: 'zh-CN'
   });
   try {
@@ -35,16 +41,15 @@ export async function renderUrlToPdf(targetUrl, onProgress) {
       onProgress?.(58, '网页已打开');
     });
     onProgress?.(32, '正在打开网页');
-    await page.goto(targetUrl, { waitUntil: 'load', timeout: 25000 });
+    await page.emulateMedia({ media: 'screen' });
+    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 28000 });
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
     if (!loaded) onProgress?.(62, '网页已打开');
     onProgress?.(74, '正在整理页面');
-    await page.waitForTimeout(700);
+    await prepareWebPageForPdf(page);
     onProgress?.(86, '正在生成 PDF');
-    const bytes = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '12mm', right: '12mm', bottom: '12mm', left: '12mm' }
-    });
+    const size = await measureWebPageSize(page);
+    const bytes = await page.pdf(pdfOptionsForWebPage(size));
     onProgress?.(96, '即将完成');
     return bytes;
   } finally {

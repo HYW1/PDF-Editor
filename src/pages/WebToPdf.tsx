@@ -139,11 +139,13 @@ export function WebToPdf() {
   return (
     <div className="subpage">
       <div className="topbar">
-        <button className="nav-btn" onClick={goHome}>
-          <NavBackLabel>返回</NavBackLabel>
-        </button>
-        <div className="file-name">网页转 PDF</div>
-        <span />
+        <div className="topbar-main">
+          <button className="nav-btn" onClick={goHome}>
+            <NavBackLabel>返回</NavBackLabel>
+          </button>
+          <div className="file-name">网页转 PDF</div>
+          <span />
+        </div>
       </div>
       <div className="web-form">
         <label className="web-label" htmlFor="web-url">

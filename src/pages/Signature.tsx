@@ -77,13 +77,15 @@ export function Signature() {
   return (
     <div className="subpage">
       <div className="topbar">
-        <button className="nav-btn" onClick={backToEditor}>
-          <NavBackLabel>取消</NavBackLabel>
-        </button>
-        <div className="file-name">手写签名</div>
-        <button className="text-btn" onClick={confirm} disabled={!hasDrawn}>
-          确认
-        </button>
+        <div className="topbar-main">
+          <button className="nav-btn" onClick={backToEditor}>
+            <NavBackLabel>取消</NavBackLabel>
+          </button>
+          <div className="file-name">手写签名</div>
+          <button className="text-btn" onClick={confirm} disabled={!hasDrawn}>
+            确认
+          </button>
+        </div>
       </div>
       <div className="sig-canvas-wrap" ref={wrapRef}>
         <canvas

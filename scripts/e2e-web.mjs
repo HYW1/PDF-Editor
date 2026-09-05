@@ -2,6 +2,40 @@ import { chromium } from 'playwright';
 import { mkdir, readFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
 
+async function extractPdfText(bytes) {
+  const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const task = getDocument({ data: new Uint8Array(bytes), isEvalSupported: false });
+  const pdf = await task.promise;
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i += 1) {
+    const pdfPage = await pdf.getPage(i);
+    const content = await pdfPage.getTextContent();
+    text += content.items.map((item) => ('str' in item ? item.str : '')).join(' ');
+    text += '\n';
+  }
+  return { text, pages: pdf.numPages };
+}
+
+async function assertTopbarRow(page, label) {
+  const metrics = await page.locator('.topbar-main').evaluate((el) => {
+    const kids = [...el.children].filter((node) => node.getBoundingClientRect().height > 0);
+    if (kids.length < 2) return { error: 'not enough children' };
+    const first = kids[0].getBoundingClientRect();
+    const second = kids[1].getBoundingClientRect();
+    return {
+      stacked: second.top >= first.bottom - 2,
+      firstCenterY: first.y + first.height / 2,
+      secondCenterY: second.y + second.height / 2
+    };
+  });
+  if (metrics.error || metrics.stacked) {
+    throw new Error(`${label} topbar wrapped: ${JSON.stringify(metrics)}`);
+  }
+  if (Math.abs(metrics.firstCenterY - metrics.secondCenterY) > 8) {
+    throw new Error(`${label} topbar misaligned: ${JSON.stringify(metrics)}`);
+  }
+}
+
 async function assertNavInline(locator, label) {
   const metrics = await locator.evaluate((el) => {
     const row = el.querySelector('.nav-back');
@@ -57,8 +91,36 @@ await page.getByRole('button', { name: '网页转 PDF' }).click();
 await page.getByLabel('网址').waitFor();
 const webBack = page.getByRole('button', { name: '返回', exact: true });
 await assertNavInline(webBack, 'web-to-pdf back');
+await assertTopbarRow(page, 'web-to-pdf');
 await page.screenshot({ path: `${outDir}/web_to_pdf_form.png` });
-await page.getByLabel('网址').fill('http://localhost:5173/web-fixture.html');
+
+const fixtureUrl = 'http://localhost:5173/web-fixture.html';
+const pdfRes = await page.request.post('http://localhost:5173/api/web-to-pdf', {
+  data: { url: fixtureUrl },
+  timeout: 45000
+});
+if (!pdfRes.ok()) {
+  throw new Error(`web-to-pdf api failed: ${pdfRes.status()} ${await pdfRes.text()}`);
+}
+const pdfBytes = Buffer.from(await pdfRes.body());
+const pdfDoc = await PDFDocument.load(pdfBytes);
+const { width: pdfWidth } = pdfDoc.getPage(0).getSize();
+if (pdfWidth < 700) {
+  throw new Error(`web pdf too narrow (${pdfWidth}), layout would wrap buttons`);
+}
+const extracted = await extractPdfText(pdfBytes);
+if (!extracted.text.includes('PDF_HELPER_HEAD_OK')) {
+  throw new Error('web pdf missing head content');
+}
+if (!extracted.text.includes('PDF_HELPER_LAZY_OK')) {
+  throw new Error(`web pdf missing below-the-fold content: ${extracted.text.slice(0, 200)}`);
+}
+if (extracted.pages < 2) {
+  throw new Error(`long fixture should span multiple pages, got ${extracted.pages}`);
+}
+console.log('web-to-pdf api ok', { pages: extracted.pages, width: pdfWidth });
+
+await page.getByLabel('网址').fill(fixtureUrl);
 await page.getByRole('button', { name: '生成 PDF' }).click();
 await page.getByText(/1 \/ \d+/).waitFor({ timeout: 40000 });
 await page.screenshot({ path: `${outDir}/web_to_pdf_editor.png` });
@@ -276,6 +338,7 @@ await mobile.getByRole('button', { name: '网页转 PDF' }).click();
 await mobile.getByLabel('网址').waitFor();
 const mobileBack = mobile.getByRole('button', { name: '返回', exact: true });
 await assertNavInline(mobileBack, 'mobile web-to-pdf back');
+await assertTopbarRow(mobile, 'mobile web-to-pdf');
 await mobile.screenshot({ path: `${outDir}/web_to_pdf_mobile.png` });
 console.log('web-to-pdf mobile form ok');
 
