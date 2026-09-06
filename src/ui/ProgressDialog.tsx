@@ -12,7 +12,13 @@ export function ProgressDialog({ title, done, total }: ProgressDialogProps) {
       <div className="progress-card">
         <div className="progress-title">{title}</div>
         <div className="progress-track">
-          <div className="progress-bar" style={{ width: `${pct}%` }} />
+          <div
+            className="progress-bar"
+            style={{
+              width: `${pct}%`,
+              transition: done >= safeTotal ? 'none' : 'width 160ms linear'
+            }}
+          />
         </div>
         <div className="progress-meta">
           {done} / {safeTotal}
