@@ -51,6 +51,7 @@ export async function prepareWebPageForPdf(page) {
         max-height: none !important;
         overflow: visible !important;
       }
+      img, video, canvas, svg { max-width: 100% !important; height: auto !important; }
       @page { margin: 0; }
     `;
     document.head.appendChild(style);
@@ -111,13 +112,14 @@ export async function measureWebPageSize(page) {
 }
 
 export function pdfOptionsForWebPage(size = {}) {
-  const width = Math.min(Math.max(Math.round(size.width || 1280), 390), 1600);
+  const width = Math.min(Math.max(Math.round(size.width || 1280), 390), 1100);
   const pageHeight = Math.round((width * 297) / 210);
   return {
     width: `${width}px`,
     height: `${pageHeight}px`,
     printBackground: true,
     preferCSSPageSize: false,
+    scale: 0.72,
     margin: { top: '0', right: '0', bottom: '0', left: '0' }
   };
 }

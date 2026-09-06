@@ -1,10 +1,9 @@
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import {
-  enableTrafficFilter,
   finishOpenPage,
   headersForUrl,
-  navigatePublicPage,
+  openAnyPublicPage,
   stealthScript,
   userAgentForUrl,
   viewportForUrl
@@ -76,8 +75,7 @@ export async function renderUrlToPdf(targetUrl, onProgress) {
     await page.setExtraHTTPHeaders(headersForUrl(targetUrl));
     await page.evaluateOnNewDocument(stealthScript);
     await page.emulateMediaType('screen');
-    await enableTrafficFilter(page);
-    await navigatePublicPage(page, targetUrl, onProgress);
+    await openAnyPublicPage(page, targetUrl, onProgress);
     const { size, name } = await finishOpenPage(page, targetUrl, onProgress);
     onProgress?.(86, '正在生成 PDF');
     const bytes = await page.pdf(pdfOptionsForWebPage(size));

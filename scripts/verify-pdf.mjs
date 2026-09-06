@@ -65,8 +65,8 @@ assert(isNoiseUrl('https://hm.baidu.com/hm.js?abc'), 'block baidu hm');
 assert(!isNoiseUrl('https://www.uisdc.com/wp-content/uploads/a.jpg'), 'keep site images');
 
 const webPdf = pdfOptionsForWebPage({ width: 1280, height: 2400 });
-assert(webPdf.width === '1280px', `web pdf width ${webPdf.width}`);
-assert(webPdf.height === '1810px', `web pdf height ${webPdf.height}`);
+assert(webPdf.width === '1100px', `web pdf width ${webPdf.width}`);
+assert(webPdf.height === '1556px', `web pdf height ${webPdf.height}`);
 assert(webPdf.preferCSSPageSize === false, 'web pdf should ignore print page size');
 console.log('web pdf options ok');
 

@@ -47,17 +47,10 @@ export function isNoiseUrl(url) {
 }
 
 export async function enableTrafficFilter(page) {
-  if (typeof page.route === 'function') {
-    await page.route('**/*', (route) => {
-      if (isNoiseUrl(route.request().url())) return route.abort();
-      return route.continue();
-    });
-    return;
-  }
-  await page.setRequestInterception(true);
-  page.on('request', (req) => {
-    if (isNoiseUrl(req.url())) req.abort().catch(() => {});
-    else req.continue().catch(() => {});
+  if (typeof page.route !== 'function') return;
+  await page.route('**/*', (route) => {
+    if (isNoiseUrl(route.request().url())) return route.abort();
+    return route.continue();
   });
 }
 
@@ -83,15 +76,70 @@ export async function navigatePublicPage(page, targetUrl, onProgress) {
   page.on('load', markOpen);
 
   try {
-    await page.goto(targetUrl, { waitUntil: 'commit', timeout: 18000 });
-    await page.waitForSelector('body', { timeout: 10000 }).catch(() => {});
+    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
+    await page.waitForSelector('body', { timeout: 4000 }).catch(() => {});
     markOpen();
   } catch (error) {
     if (!(await pageHasUsableContent(page))) throw error;
     markOpen();
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 400));
+  await new Promise((resolve) => setTimeout(resolve, 250));
+}
+
+export async function loadPageFromHtml(page, targetUrl, onProgress) {
+  onProgress?.(36, '正在下载网页');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  let res;
+  try {
+    res = await fetch(targetUrl, {
+      redirect: 'follow',
+      headers: {
+        ...headersForUrl(targetUrl),
+        'User-Agent': userAgentForUrl(targetUrl)
+      },
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) throw userFacing('网站拒绝打开这个页面');
+  let html = await res.text();
+  if (!html || html.length < 80) throw userFacing('网页没有内容');
+  const finalUrl = res.url || targetUrl;
+  html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  if (!/<base\s/i.test(html)) {
+    html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${finalUrl}">`);
+  }
+  onProgress?.(50, '正在打开网页');
+  await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  onProgress?.(58, '网页已打开');
+}
+
+export async function openAnyPublicPage(page, targetUrl, onProgress) {
+  const preferFetch = Boolean(process.env.VERCEL);
+  const attempts = preferFetch
+    ? [
+        () => loadPageFromHtml(page, targetUrl, onProgress),
+        () => navigatePublicPage(page, targetUrl, onProgress)
+      ]
+    : [
+        () => navigatePublicPage(page, targetUrl, onProgress),
+        () => loadPageFromHtml(page, targetUrl, onProgress)
+      ];
+  let lastError = null;
+  for (const attempt of attempts) {
+    try {
+      await attempt();
+      if (await pageHasUsableContent(page)) return;
+    } catch (error) {
+      lastError = error;
+      console.warn('open page attempt failed', error);
+    }
+  }
+  if (lastError?.expose) throw lastError;
+  throw userFacing('打不开这个网页');
 }
 
 export function stealthScript() {

@@ -7,6 +7,20 @@ function contentDisposition(name) {
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(raw)}`;
 }
 
+function sendPdfFile(send, name, bytes) {
+  const buf = Buffer.from(bytes);
+  const chunk = 45 * 1024;
+  if (buf.length <= chunk) {
+    send({ type: 'file', name, pdf: buf.toString('base64') });
+    return;
+  }
+  send({ type: 'file-start', name, bytes: buf.length });
+  for (let i = 0; i < buf.length; i += chunk) {
+    send({ type: 'file-chunk', data: buf.subarray(i, i + chunk).toString('base64') });
+  }
+  send({ type: 'file-end' });
+}
+
 function unwrapPdfResult(result, fallbackName) {
   if (result && result.bytes) {
     return { bytes: result.bytes, name: result.name || fallbackName };
@@ -79,7 +93,7 @@ export function createWebToPdfHandler(renderUrlToPdf) {
             send({ type: 'progress', progress, message });
           });
           const { bytes, name } = unwrapPdfResult(result, fallbackName);
-          send({ type: 'file', name, pdf: Buffer.from(bytes).toString('base64') });
+          sendPdfFile(send, name, bytes);
           res.end();
         } catch (error) {
           console.error(error);

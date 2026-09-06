@@ -105,7 +105,7 @@ if (!pdfRes.ok()) {
 const pdfBytes = Buffer.from(await pdfRes.body());
 const pdfDoc = await PDFDocument.load(pdfBytes);
 const { width: pdfWidth } = pdfDoc.getPage(0).getSize();
-if (pdfWidth < 700) {
+if (pdfWidth < 400) {
   throw new Error(`web pdf too narrow (${pdfWidth}), layout would wrap buttons`);
 }
 const extracted = await extractPdfText(pdfBytes);

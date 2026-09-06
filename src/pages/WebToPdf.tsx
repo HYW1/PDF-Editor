@@ -94,6 +94,7 @@ export function WebToPdf() {
       let buffer = '';
       let fileName = '网页.pdf';
       let fileBytes: Uint8Array | null = null;
+      const fileChunks: Uint8Array[] = [];
       while (true) {
         const chunk = await reader.read();
         if (chunk.done) break;
@@ -109,6 +110,7 @@ export function WebToPdf() {
             error?: string;
             name?: string;
             pdf?: string;
+            data?: string;
           };
           if (event.type === 'progress') {
             setProgress((current) => Math.max(current, event.progress || current));
@@ -119,6 +121,20 @@ export function WebToPdf() {
           } else if (event.type === 'file' && event.pdf) {
             fileName = event.name || fileName;
             fileBytes = base64ToBytes(event.pdf);
+          } else if (event.type === 'file-start') {
+            fileName = event.name || fileName;
+            fileChunks.length = 0;
+          } else if (event.type === 'file-chunk' && event.data) {
+            fileChunks.push(base64ToBytes(event.data));
+          } else if (event.type === 'file-end') {
+            const total = fileChunks.reduce((sum, part) => sum + part.byteLength, 0);
+            const merged = new Uint8Array(total);
+            let offset = 0;
+            for (const part of fileChunks) {
+              merged.set(part, offset);
+              offset += part.byteLength;
+            }
+            fileBytes = merged;
           }
         }
       }

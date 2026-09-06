@@ -7,7 +7,7 @@
   "fluid": true,
   "functions": {
     "api/web-to-pdf.js": {
-      "memory": 1024,
+      "memory": 2048,
       "maxDuration": 120,
       "includeFiles": "node_modules/@sparticuz/chromium/**"
     }
