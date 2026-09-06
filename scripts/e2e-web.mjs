@@ -228,7 +228,7 @@ console.log('added text');
 
 await page.getByRole('button', { name: '导出' }).click();
 await page.getByRole('button', { name: '直接导出' }).waitFor();
-if (!(await page.getByText(/预估/).count())) {
+if (!(await page.getByText(/约 /).count())) {
   throw new Error('compress options should show estimated size');
 }
 await page.locator('.sheet').screenshot({ path: `${outDir}/export_sheet_sizes.png` });
