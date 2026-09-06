@@ -1,3 +1,4 @@
+import { inlineWebPage } from './inline-web-page.mjs';
 import { isWechatHost, pdfNameFromTitle } from './parse-page-url.mjs';
 import { measureWebPageSize, prepareWebPageForPdf, revealSiteContent } from './prepare-web-pdf.mjs';
 
@@ -89,39 +90,11 @@ export async function navigatePublicPage(page, targetUrl, onProgress) {
 }
 
 export async function loadPageFromHtml(page, targetUrl, onProgress) {
-  onProgress?.(36, '正在下载网页');
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-  let res;
-  try {
-    res = await fetch(targetUrl, {
-      redirect: 'follow',
-      headers: {
-        ...headersForUrl(targetUrl),
-        'User-Agent': userAgentForUrl(targetUrl)
-      },
-      signal: controller.signal
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-  if (!res.ok) throw userFacing('网站拒绝打开这个页面');
-  let html = await res.text();
-  if (!html || html.length < 80) throw userFacing('网页没有内容');
-  const extracted = textFromHtml(html);
-  const finalUrl = res.url || targetUrl;
-  html = html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<(iframe|video|audio|object|embed)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
-    .replace(/<(iframe|video|audio|object|embed)[^>]*\/?>/gi, '');
-  const safeBase = finalUrl.replace(/"/g, '&quot;');
-  if (!/<base\s/i.test(html)) {
-    html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${safeBase}">`);
-  }
+  const packed = await inlineWebPage(targetUrl, onProgress);
+  const extracted = textFromHtml(packed.html);
   onProgress?.(50, '正在打开网页');
-  await freezePageNetwork(page);
   const bootstrap = `data:text/html;charset=utf-8,${encodeURIComponent(
-    `<!doctype html><html><head><meta charset="utf-8"><base href="${safeBase}"></head><body></body></html>`
+    `<!doctype html><html><head><meta charset="utf-8"><base href="${packed.finalUrl.replace(/"/g, '&quot;')}"></head><body></body></html>`
   )}`;
   try {
     await page.goto(bootstrap, { waitUntil: 'domcontentloaded', timeout: 4000 });
@@ -129,9 +102,9 @@ export async function loadPageFromHtml(page, targetUrl, onProgress) {
     /* setContent still works even if this bootstrap navigation is skipped */
   }
   try {
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: process.env.VERCEL ? 8000 : 20000 });
+    await page.setContent(packed.html, { waitUntil: 'domcontentloaded', timeout: process.env.VERCEL ? 12000 : 20000 });
   } catch {
-    /* HTML is already in the page even if stylesheets or images hang. */
+    /* HTML is already in the page even if leftover resources hang. */
   }
   onProgress?.(58, '网页已打开');
   return extracted;
@@ -310,10 +283,8 @@ export async function finishOpenPage(page, targetUrl, onProgress, extracted = {}
   const info = await inspectPageAccess(page);
   throwIfBlocked(info);
   const snap = await snapshotPageText(page);
-  if (!process.env.VERCEL) {
-    await revealSiteContent(page).catch(() => {});
-    await prepareWebPageForPdf(page).catch(() => {});
-  }
+  await revealSiteContent(page).catch(() => {});
+  await prepareWebPageForPdf(page).catch(() => {});
   const again = await inspectPageAccess(page);
   throwIfBlocked(again);
   if (again.empty && !process.env.VERCEL) throw userFacing('页面是空的，可能被网站拦下了');

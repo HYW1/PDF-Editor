@@ -1,4 +1,5 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
+import { absolutizeUrl, inlineWebPage } from '../server/inline-web-page.mjs';
 import { headersForUrl, isNoiseUrl, openAnyPublicPage, textFromHtml } from '../server/open-web-page.mjs';
 import { parsePageUrl } from '../server/parse-page-url.mjs';
 import {
@@ -167,12 +168,21 @@ assert(
   const originalFetch = globalThis.fetch;
   const calls = [];
   process.env.VERCEL = '1';
-  globalThis.fetch = async () => ({
-    ok: true,
-    url: 'https://www.uisdc.com/2026-9-design-resources-vol2',
-    text: async () =>
-      '<html><head><title>优设</title></head><body><article>大家好，这是 9 月整理的第二波 AI 干货合集</article></body></html>'
-  });
+  globalThis.fetch = async (url) => {
+    const href = String(url);
+    if (href.endsWith('.css')) {
+      const body = Buffer.from('body{color:#111}');
+      return { ok: true, url: href, headers: { get: () => 'text/css' }, arrayBuffer: async () => body };
+    }
+    const html =
+      '<html><head><title>优设</title><link rel="stylesheet" href="https://www.uisdc.com/a.css"></head><body><article>大家好，这是 9 月整理的第二波 AI 干货合集</article></body></html>';
+    return {
+      ok: true,
+      url: 'https://www.uisdc.com/2026-9-design-resources-vol2',
+      headers: { get: () => 'text/html' },
+      arrayBuffer: async () => Buffer.from(html)
+    };
+  };
   const page = {
     on() {},
     async goto(nextUrl) {
@@ -238,28 +248,41 @@ assert(
   const bytes = await textToPdfBytes(extracted.title, `${extracted.text}\n这一期整理了 6 个相对比较全的 Skill 合集。`);
   assert(bytes.byteLength > 200, 'text pdf should not be empty');
   assert(bytes.subarray(0, 4).toString() === '%PDF', 'text pdf header');
-  const prev = process.env.VERCEL;
-  process.env.VERCEL = '1';
-  try {
-    const result = await printOpenedPage(
-      {
-        async evaluate() {},
-        async pdf() {
-          throw new Error('should not print visually on Vercel when text exists');
-        }
+  const visual = Buffer.from(`%PDF-1.4\n${'v'.repeat(900)}`);
+  const visualResult = await printOpenedPage(
+    {
+      async evaluate() {},
+      async createCDPSession() {
+        return {
+          async send() {
+            return { data: visual.toString('base64') };
+          },
+          async detach() {}
+        };
       },
-      {
-        size: { width: 900, height: 1200 },
-        name: '优设合集.pdf',
-        title: extracted.title,
-        text: `${extracted.text}\n这一期整理了 6 个相对比较全的 Skill 合集。`
-      },
-      () => {}
-    );
-    assert(result.bytes.byteLength > 200, 'vercel text pdf');
-  } finally {
-    if (prev === undefined) delete process.env.VERCEL;
-    else process.env.VERCEL = prev;
-  }
-  console.log('text fallback print ok', { bytes: bytes.byteLength });
+      async pdf() {
+        throw new Error('should use visual cdp');
+      }
+    },
+    {
+      size: { width: 900, height: 1200 },
+      name: '优设合集.pdf',
+      title: extracted.title,
+      text: `${extracted.text}\n这一期整理了 6 个相对比较全的 Skill 合集。`
+    },
+    () => {}
+  );
+  assert(visualResult.bytes.byteLength === visual.byteLength, 'should keep the visual webpage PDF');
+  console.log('visual webpage pdf ok', { bytes: bytes.byteLength });
+}
+
+assert(absolutizeUrl('//image.uisdc.com/a.webp', 'https://www.uisdc.com/x') === 'https://image.uisdc.com/a.webp', 'protocol-relative image');
+console.log('inline url ok');
+
+{
+  const packed = await inlineWebPage('https://www.uisdc.com/2026-9-design-resources-vol2');
+  assert(packed.html.includes('大家好'), 'inlined page keeps the article');
+  assert(/data:image\//.test(packed.html), 'inlined page embeds images');
+  assert(packed.inlined > 2, `expected several images, got ${packed.inlined}`);
+  console.log('inline uisdc ok', { inlined: packed.inlined, bytes: packed.html.length });
 }

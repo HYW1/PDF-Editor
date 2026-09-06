@@ -170,18 +170,52 @@ async function printWithCdp(page, options) {
   }
 }
 
+export async function screenshotPageToPdf(page, size) {
+  const { PDFDocument } = await import('pdf-lib');
+  const width = Math.min(Math.max(Math.round(size.width || 1280), 390), 1100);
+  let totalHeight = Math.min(Math.max(Math.round(size.height || 900), 900), 14000);
+  try {
+    const measured = await page.evaluate(() => ({
+      width: Math.min(Math.max(document.documentElement.scrollWidth || 1280, 390), 1280),
+      height: Math.min(Math.max(document.documentElement.scrollHeight || 900, 900), 14000)
+    }));
+    totalHeight = measured.height;
+  } catch {
+    /* keep measured size from caller */
+  }
+  const slice = 1400;
+  if (typeof page.setViewportSize === 'function') {
+    await page.setViewportSize({ width, height: slice }).catch(() => {});
+  } else if (typeof page.setViewport === 'function') {
+    await page.setViewport({ width, height: slice, deviceScaleFactor: 1 }).catch(() => {});
+  }
+  const doc = await PDFDocument.create();
+  for (let y = 0; y < totalHeight; y += slice) {
+    try {
+      await page.evaluate((top) => window.scrollTo(0, top), y);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    } catch {
+      /* keep going */
+    }
+    const bytes = await page.screenshot({ type: 'jpeg', quality: 68, fullPage: false });
+    const image = await doc.embedJpg(bytes);
+    const paper = doc.addPage([image.width, image.height]);
+    paper.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+  }
+  const out = await doc.save({ useObjectStreams: true });
+  if (out.byteLength < 400) throw new Error('empty screenshot pdf');
+  return Buffer.from(out);
+}
+
 export async function printPageToPdf(page, size) {
   try {
-    await page.evaluate((compact) => {
+    await page.evaluate(() => {
       try {
         window.stop();
       } catch {
         /* ignore */
       }
-      if (compact) {
-        [...document.images].slice(16).forEach((img) => img.remove());
-      }
-    }, Boolean(process.env.VERCEL));
+    });
   } catch {
     /* page may already be idle */
   }
@@ -286,25 +320,24 @@ export async function textToPdfBytes(title, text) {
 
 export async function printOpenedPage(page, opened, onProgress) {
   const compact = String(opened.text || '').replace(/\s+/g, '');
-  if (process.env.VERCEL && compact.length >= 40) {
-    onProgress?.(86, '正在生成 PDF');
-    const bytes = await textToPdfBytes(opened.title || opened.name, opened.text);
-    if (bytes.byteLength > 200) {
-      onProgress?.(96, '即将完成');
-      return { bytes, name: opened.name };
+  const visualAttempts = process.env.VERCEL
+    ? [screenshotPageToPdf, printPageToPdf]
+    : [printPageToPdf, screenshotPageToPdf];
+  onProgress?.(86, '正在生成 PDF');
+  for (const attempt of visualAttempts) {
+    try {
+      const bytes = await attempt(page, opened.size);
+      if (bytes && bytes.byteLength > 800) {
+        onProgress?.(96, '即将完成');
+        return { bytes, name: opened.name };
+      }
+    } catch (error) {
+      console.warn('visual capture failed', error);
     }
   }
-  onProgress?.(86, '正在生成 PDF');
-  try {
-    const bytes = await printPageToPdf(page, opened.size);
-    onProgress?.(96, '即将完成');
-    return { bytes, name: opened.name };
-  } catch (error) {
-    console.warn('visual print failed', error);
-    if (compact.length < 20) throw error;
-    onProgress?.(88, '正在保存文字内容');
-    const bytes = await textToPdfBytes(opened.title || opened.name, opened.text);
-    onProgress?.(96, '即将完成');
-    return { bytes, name: opened.name };
-  }
+  if (compact.length < 20) throw Object.assign(new Error('网页打开了，但生成失败'), { expose: true });
+  onProgress?.(90, '正在保存文字内容');
+  const bytes = await textToPdfBytes(opened.title || opened.name, opened.text);
+  onProgress?.(96, '即将完成');
+  return { bytes, name: opened.name };
 }
