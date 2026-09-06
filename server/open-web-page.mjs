@@ -118,27 +118,24 @@ export async function loadPageFromHtml(page, targetUrl, onProgress) {
 }
 
 export async function openAnyPublicPage(page, targetUrl, onProgress) {
-  const preferFetch = Boolean(process.env.VERCEL);
-  const attempts = preferFetch
-    ? [
-        () => loadPageFromHtml(page, targetUrl, onProgress),
-        () => navigatePublicPage(page, targetUrl, onProgress)
-      ]
-    : [
-        () => navigatePublicPage(page, targetUrl, onProgress),
-        () => loadPageFromHtml(page, targetUrl, onProgress)
-      ];
-  let lastError = null;
-  for (const attempt of attempts) {
+  if (process.env.VERCEL) {
     try {
-      await attempt();
-      if (await pageHasUsableContent(page)) return;
+      await loadPageFromHtml(page, targetUrl, onProgress);
+      return;
     } catch (error) {
-      lastError = error;
-      console.warn('open page attempt failed', error);
+      console.warn('fetch html failed, trying browser', error);
     }
   }
-  if (lastError?.expose) throw lastError;
+  try {
+    await navigatePublicPage(page, targetUrl, onProgress);
+    if (await pageHasUsableContent(page)) return;
+  } catch (error) {
+    console.warn('goto failed', error);
+  }
+  if (!process.env.VERCEL) {
+    await loadPageFromHtml(page, targetUrl, onProgress);
+    return;
+  }
   throw userFacing('打不开这个网页');
 }
 
@@ -207,7 +204,7 @@ export async function inspectPageAccess(page) {
       login,
       captcha,
       wechatBlocked,
-      empty: text.trim().length < 30
+      empty: text.trim().length < 30 && (document.body?.innerHTML || '').length < 800
     };
   });
 }
