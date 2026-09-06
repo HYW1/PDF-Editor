@@ -2,18 +2,41 @@ import { formatSize } from './quota';
 import type { Annotation, LoadedDoc, PageInfo } from './types';
 
 export const COMPRESS_PRESETS = {
-  high: { scale: 2, jpeg: 0.84, bytesPerPixel: 0.22 },
-  medium: { scale: 1.35, jpeg: 0.62, bytesPerPixel: 0.12 },
-  low: { scale: 1, jpeg: 0.4, bytesPerPixel: 0.07 }
+  high: {
+    maxEdge: 2200,
+    jpeg: 0.82,
+    bytesPerPixel: 0.18,
+    label: '适合打印',
+    hint: '更清晰，适合打印和存档'
+  },
+  medium: {
+    maxEdge: 1600,
+    jpeg: 0.64,
+    bytesPerPixel: 0.11,
+    label: '适合发送',
+    hint: '清晰度和体积平衡'
+  },
+  low: {
+    maxEdge: 1080,
+    jpeg: 0.42,
+    bytesPerPixel: 0.06,
+    label: '适合微信',
+    hint: '体积最小，方便转发'
+  }
 } as const;
 
 export type CompressQuality = keyof typeof COMPRESS_PRESETS;
 
 export function formatEstimate(bytes: number): string {
   const mb = bytes / (1024 * 1024);
-  if (mb >= 10) return `预估 ${mb.toFixed(0)} MB`;
-  if (mb >= 0.1) return `预估 ${mb.toFixed(1)} MB`;
-  return `预估 ${formatSize(bytes)}`;
+  if (mb >= 10) return `约 ${mb.toFixed(0)} MB`;
+  if (mb >= 0.1) return `约 ${mb.toFixed(1)} MB`;
+  return `约 ${formatSize(bytes)}`;
+}
+
+export function scaleForPage(width: number, height: number, maxEdge: number): number {
+  const longEdge = Math.max(width, height, 1);
+  return Math.min(maxEdge / longEdge, 3);
 }
 
 export function estimateOriginalBytes(
@@ -54,7 +77,8 @@ export function estimateCompressedBytes(pages: PageInfo[], quality: CompressQual
   const preset = COMPRESS_PRESETS[quality];
   let total = 900;
   for (const page of pages) {
-    const pixels = page.width * page.height * preset.scale * preset.scale;
+    const scale = scaleForPage(page.width, page.height, preset.maxEdge);
+    const pixels = page.width * scale * page.height * scale;
     total += pixels * preset.bytesPerPixel + 1800;
   }
   return Math.max(1024, Math.round(total));

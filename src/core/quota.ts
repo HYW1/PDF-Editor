@@ -32,7 +32,7 @@ export function canExport(): boolean {
 }
 
 export function compressNeedsAd(): boolean {
-  return true;
+  return false;
 }
 
 export function recordExport(): UserQuota {

@@ -49,7 +49,7 @@ export function PageSelector() {
             className={`selector-item ${selected[index] ? 'selected' : ''}`}
             onClick={() => toggle(index)}
           >
-            <VisiblePageCanvas page={page} docs={docs} maxWidth={140} quality="thumb" eager={index < 12} />
+            <VisiblePageCanvas page={page} docs={docs} maxWidth={140} quality="thumb" eager={index < 4} />
             {selected[index] && <span className="check">✓</span>}
           </button>
         ))}

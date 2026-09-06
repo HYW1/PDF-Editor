@@ -286,3 +286,12 @@ console.log('inline url ok');
   assert(packed.inlined > 2, `expected several images, got ${packed.inlined}`);
   console.log('inline uisdc ok', { inlined: packed.inlined, bytes: packed.html.length });
 }
+
+function scaleForPage(width, height, maxEdge) {
+  const longEdge = Math.max(width, height, 1);
+  return Math.min(maxEdge / longEdge, 3);
+}
+assert(scaleForPage(595, 842, 1080) < scaleForPage(595, 842, 2200), 'tighter size uses smaller scale');
+assert(Math.abs(scaleForPage(2200, 1100, 2200) - 1) < 0.001, 'already at target edge');
+assert(scaleForPage(400, 400, 2200) === 3, 'tiny pages should cap scale');
+console.log('compress size presets ok');

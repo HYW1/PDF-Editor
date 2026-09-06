@@ -12,6 +12,7 @@ import {
   A4,
   insertPages,
   loadPdfFile,
+  loadPdfFiles,
   makeBlankPage,
   makeImagePages,
   movePage,
@@ -130,8 +131,8 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
     const nextDocs: Record<string, LoadedDoc> = {};
     const nextPages: PageInfo[] = [];
     try {
-      for (const file of files) {
-        const loaded = await loadPdfFile(file);
+      const loadedList = await loadPdfFiles(files);
+      for (const loaded of loadedList) {
         nextDocs[loaded.doc.id] = loaded.doc;
         nextPages.push(...loaded.pages);
       }

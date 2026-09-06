@@ -4,22 +4,20 @@ import { usePdfSession } from '../session/PdfSession';
 import { IconChevron, IconEdit, IconImage, IconMerge, IconPdfToImage, IconWeb } from '../ui/icons';
 import { Toast } from '../ui/Toast';
 
-const IMAGE_ACCEPT = 'image/png,image/jpeg,image/jpg,image/webp,image/bmp,image/gif';
-
 function isPdf(file: File) {
   return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 }
 
 function isImage(file: File) {
   if (file.type.startsWith('image/')) return true;
-  return /\.(png|jpe?g|webp|bmp|gif)$/i.test(file.name);
+  return /\.(png|jpe?g|webp|bmp|gif|heic|heif)$/i.test(file.name);
 }
 
 export function Home() {
   const { openEditorFromFiles, openEditorFromImages, openWebToPdf } = usePdfSession();
   const [toast, setToast] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
     const warm = () => {
@@ -39,22 +37,30 @@ export function Home() {
   }
 
   async function openPdfs(multiple: boolean) {
+    if (busy) return;
     try {
       const files = await pickFiles('application/pdf', multiple);
       if (!files.length) return;
+      setBusy(multiple ? `正在合并 ${files.length} 个文件…` : '正在打开…');
       await openEditorFromFiles(files);
     } catch (error) {
       showToast(error instanceof Error ? error.message : '打开失败');
+    } finally {
+      setBusy(null);
     }
   }
 
   async function openImages() {
+    if (busy) return;
     try {
-      const files = await pickFiles(IMAGE_ACCEPT, true);
+      const files = await pickFiles('image/*', true);
       if (!files.length) return;
+      setBusy(files.length > 1 ? `正在处理 ${files.length} 张图片…` : '正在打开图片…');
       await openEditorFromImages(files);
     } catch (error) {
       showToast(error instanceof Error ? error.message : '打开失败');
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -63,7 +69,7 @@ export function Home() {
     try {
       const files = await pickFiles('application/pdf', false);
       if (!files[0]) return;
-      setBusy(true);
+      setBusy('正在导出图片…');
       showToast('正在导出图片…');
       const [{ loadPdfFile }, { renderPagesToPngs, downloadPageImages }] = await Promise.all([
         import('../core/pdf-engine'),
@@ -81,7 +87,7 @@ export function Home() {
     } catch (error) {
       showToast(error instanceof Error ? error.message : '导出图片失败');
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -97,16 +103,20 @@ export function Home() {
         return;
       }
       if (pdfs.length) {
+        setBusy(pdfs.length > 1 ? `正在合并 ${pdfs.length} 个文件…` : '正在打开…');
         await openEditorFromFiles(pdfs);
         return;
       }
       if (images.length) {
+        setBusy(images.length > 1 ? `正在处理 ${images.length} 张图片…` : '正在打开图片…');
         await openEditorFromImages(images);
         return;
       }
       showToast('请拖入 PDF 或图片');
     } catch (error) {
       showToast(error instanceof Error ? error.message : '打开失败');
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -135,7 +145,7 @@ export function Home() {
 
         <div className="home-features">
           <div className="home-primary">
-            <button className="hero" onClick={() => openPdfs(false)}>
+            <button className="hero" onClick={() => openPdfs(false)} disabled={Boolean(busy)}>
               <div className="feature-icon">
                 <IconEdit size={24} />
               </div>
@@ -148,7 +158,7 @@ export function Home() {
               </span>
             </button>
 
-            <button className="action-row" onClick={() => openPdfs(true)}>
+            <button className="action-row" onClick={() => openPdfs(true)} disabled={Boolean(busy)}>
               <div className="feature-icon">
                 <IconMerge size={24} />
               </div>
@@ -161,7 +171,7 @@ export function Home() {
               </span>
             </button>
 
-            <button className="action-row" onClick={openWebToPdf}>
+            <button className="action-row" onClick={openWebToPdf} disabled={Boolean(busy)}>
               <div className="feature-icon">
                 <IconWeb size={24} />
               </div>
@@ -178,7 +188,7 @@ export function Home() {
           <div className="convert-block">
             <div className="section-label">格式转换</div>
             <div className="convert-grid">
-              <button className="action-row" onClick={() => void openImages()}>
+              <button className="action-row" onClick={() => void openImages()} disabled={Boolean(busy)}>
                 <div className="feature-icon">
                   <IconImage size={24} />
                 </div>
@@ -191,7 +201,7 @@ export function Home() {
                 </span>
               </button>
 
-              <button className="action-row" onClick={() => void convertPdfToImages()} disabled={busy}>
+              <button className="action-row" onClick={() => void convertPdfToImages()} disabled={Boolean(busy)}>
                 <div className="feature-icon">
                   <IconPdfToImage size={24} />
                 </div>
@@ -209,6 +219,11 @@ export function Home() {
 
         <p className="home-foot">功能都免费。文件不上传，改完再导出。</p>
       </div>
+      {busy && (
+        <div className="home-busy" role="status" aria-live="polite">
+          <div className="home-busy-card">{busy}</div>
+        </div>
+      )}
       <Toast message={toast} />
     </div>
   );

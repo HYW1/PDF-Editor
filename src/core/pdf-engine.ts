@@ -9,6 +9,10 @@ export async function loadPdfFile(file: File): Promise<{ doc: LoadedDoc; pages: 
   return loadPdfBytes(bytes, file.name);
 }
 
+export async function loadPdfFiles(files: File[]): Promise<{ doc: LoadedDoc; pages: PageInfo[] }[]> {
+  return Promise.all(files.map((file) => loadPdfFile(file)));
+}
+
 export function copyBuffer(bytes: ArrayBuffer): ArrayBuffer {
   return bytes.slice(0);
 }
@@ -17,8 +21,53 @@ export async function loadPdfBytes(
   bytes: ArrayBuffer,
   name: string
 ): Promise<{ doc: LoadedDoc; pages: PageInfo[] }> {
+  const safeBytes = bytes.byteLength ? copyBuffer(bytes) : bytes;
+  try {
+    return await loadPdfBytesFast(safeBytes, name);
+  } catch (error) {
+    console.warn('fast pdf read failed, using preview engine', error);
+    return loadPdfBytesSlow(safeBytes, name);
+  }
+}
+
+async function loadPdfBytesFast(
+  safeBytes: ArrayBuffer,
+  name: string
+): Promise<{ doc: LoadedDoc; pages: PageInfo[] }> {
+  const { PDFDocument } = await import('pdf-lib');
+  const src = await PDFDocument.load(copyBuffer(safeBytes), {
+    ignoreEncryption: true,
+    updateMetadata: false
+  });
+  const docId = generateId('doc');
+  const pages = src.getPages().map((pdfPage, index) => {
+    const { width, height } = pdfPage.getSize();
+    const rotation = normalizeRotation(pdfPage.getRotation().angle);
+    const swapped = rotation === 90 || rotation === 270;
+    return {
+      id: generateId('page'),
+      width: swapped ? height : width,
+      height: swapped ? width : height,
+      rotation,
+      nativeRotation: rotation,
+      source: { kind: 'pdf' as const, docId, pageIndex: index }
+    };
+  });
+  if (!pages.length) throw new Error('empty pdf');
+  const doc: LoadedDoc = { id: docId, name, bytes: safeBytes, pageCount: pages.length };
+  if (typeof window !== 'undefined') {
+    void import('./pdf-render')
+      .then((mod) => mod.primePdfJsDoc(docId, safeBytes))
+      .catch(() => {});
+  }
+  return { doc, pages };
+}
+
+async function loadPdfBytesSlow(
+  safeBytes: ArrayBuffer,
+  name: string
+): Promise<{ doc: LoadedDoc; pages: PageInfo[] }> {
   const { primePdfJsDoc } = await import('./pdf-render');
-  const safeBytes = bytes.byteLength ? bytes : copyBuffer(bytes);
   const docId = generateId('doc');
   const pdf = await primePdfJsDoc(docId, safeBytes);
   const pageCount = pdf.numPages;
@@ -42,8 +91,7 @@ export async function loadPdfBytes(
       });
     }
   }
-  const doc: LoadedDoc = { id: docId, name, bytes: safeBytes, pageCount };
-  return { doc, pages };
+  return { doc: { id: docId, name, bytes: safeBytes, pageCount }, pages };
 }
 
 function defaultPageSize(pages: PageInfo[]): { width: number; height: number } {
@@ -69,24 +117,21 @@ export async function makeImagePages(
   pageSize: { width: number; height: number },
   fit: FitMode
 ): Promise<PageInfo[]> {
-  const result: PageInfo[] = [];
-  for (const file of files) {
-    const bytes = copyBuffer(await file.arrayBuffer());
-    result.push({
+  return Promise.all(
+    files.map(async (file) => ({
       id: generateId('page'),
       width: pageSize.width,
       height: pageSize.height,
       rotation: 0,
       source: {
-        kind: 'image',
-        bytes,
+        kind: 'image' as const,
+        bytes: copyBuffer(await file.arrayBuffer()),
         mime: file.type || guessMime(file.name),
         name: file.name,
         fit
       }
-    });
-  }
-  return result;
+    }))
+  );
 }
 
 export function rotatePage(page: PageInfo, delta = 90): PageInfo {

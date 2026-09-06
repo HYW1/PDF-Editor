@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
-import { compressPdfBytes, type ExportQuality } from '../core/pdf-compress';
-import { estimateExportSizes, formatEstimate } from '../core/pdf-estimate';
-import { downloadBytes, pickFiles } from '../core/files';
+import { compressPdfBytes, compressSuffix, type ExportQuality } from '../core/pdf-compress';
+import { COMPRESS_PRESETS, estimateExportSizes, formatEstimate } from '../core/pdf-estimate';
+import { downloadBytes } from '../core/files';
 import { exportPdf } from '../core/pdf-engine';
 import { downloadPageImages, renderPagesToPngs } from '../core/pdf-to-images';
-import { AD_SECONDS, compressNeedsAd, formatSize, recordExport, unlockWithAd } from '../core/quota';
+import { formatSize, recordExport } from '../core/quota';
 import { extractPageTextLines, type TextLine } from '../core/pdf-text';
-import type { Annotation, FitMode } from '../core/types';
+import type { Annotation } from '../core/types';
 import { usePdfSession } from '../session/PdfSession';
+import { FilePick } from '../ui/FilePick';
 import { IconTip } from '../ui/IconTip';
 import { NavBackLabel } from '../ui/NavBackLabel';
 import {
@@ -26,7 +27,7 @@ import { PageCanvas, VisiblePageCanvas } from '../ui/PageCanvas';
 import { Toast } from '../ui/Toast';
 import { useIsDesktop } from '../ui/useMedia';
 
-type Sheet = 'add' | 'fit' | 'blank' | 'text-menu' | 'text' | 'text-edit' | 'export' | 'ad' | null;
+type Sheet = 'text-menu' | 'text' | 'text-edit' | 'export' | null;
 
 export function Editor() {
   const session = usePdfSession();
@@ -42,15 +43,13 @@ export function Editor() {
     canRedo
   } = session;
   const [sheet, setSheet] = useState<Sheet>(null);
+  const [addMode, setAddMode] = useState(false);
   const [textValue, setTextValue] = useState('');
   const [pickingOriginal, setPickingOriginal] = useState(false);
   const [textLines, setTextLines] = useState<TextLine[]>([]);
   const [editingLine, setEditingLine] = useState<TextLine | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [savedExport, setSavedExport] = useState<{ name: string; bytes: Uint8Array } | null>(null);
-  const [pendingQuality, setPendingQuality] = useState<Exclude<ExportQuality, 'original'> | null>(null);
-  const [adLeft, setAdLeft] = useState(AD_SECONDS);
   const stageRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [previewWidth, setPreviewWidth] = useState(280);
@@ -131,43 +130,18 @@ export function Editor() {
     [annotations, docs, pages]
   );
 
-  useEffect(() => {
-    if (sheet !== 'ad') return;
-    setAdLeft(AD_SECONDS);
-    const timer = window.setInterval(() => {
-      setAdLeft((left) => {
-        if (left <= 1) {
-          window.clearInterval(timer);
-          return 0;
-        }
-        return left - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [sheet]);
-
-  async function onAddImage() {
-    setSheet(null);
-    const files = await pickFiles('image/png,image/jpeg,image/jpg,image/webp,image/bmp,image/gif', true);
+  async function onAddImage(files: File[]) {
+    setAddMode(false);
     if (!files.length) return;
-    setSheet('fit');
-    pendingImages.current = files;
-  }
-
-  const pendingImages = useRef<File[]>([]);
-
-  async function confirmFit(fit: FitMode) {
-    setSheet(null);
     try {
-      await session.addImagePages(pendingImages.current, fit);
+      await session.addImagePages(files, 'contain');
     } catch (error) {
       showToast(error instanceof Error ? error.message : '添加图片失败');
     }
   }
 
-  async function onAddPdf() {
-    setSheet(null);
-    const files = await pickFiles('application/pdf', false);
+  async function onAddPdf(files: File[]) {
+    setAddMode(false);
     if (!files[0]) return;
     try {
       await session.startAddPdf(files[0]);
@@ -176,19 +150,16 @@ export function Editor() {
     }
   }
 
-  async function onExport() {
-    if (!pages.length || exporting) return;
-    setSheet('export');
+  function onAddBlank() {
+    setAddMode(false);
+    const landscape = Boolean(currentPage && currentPage.width > currentPage.height);
+    session.addBlankPage(landscape);
   }
 
-  function startCompress(quality: Exclude<ExportQuality, 'original'>) {
+  async function onExport() {
     if (!pages.length || exporting) return;
-    if (compressNeedsAd()) {
-      setPendingQuality(quality);
-      setSheet('ad');
-      return;
-    }
-    void confirmExport(quality);
+    setAddMode(false);
+    setSheet('export');
   }
 
   async function confirmExport(quality: ExportQuality) {
@@ -201,23 +172,20 @@ export function Editor() {
         showToast(quality === 'original' ? `正在导出 ${done}/${total}` : `正在整理 ${done}/${total}`);
       });
       if (quality !== 'original') {
-        unlockWithAd();
         bytes = await compressPdfBytes(bytes, quality, (done, total) => {
           showToast(`压缩中 ${done}/${total}`);
         });
       }
       recordExport();
-      const suffix = quality === 'original' ? '_编辑.pdf' : `_压缩${quality === 'high' ? '高' : quality === 'medium' ? '中' : '低'}.pdf`;
+      const suffix = quality === 'original' ? '_编辑.pdf' : `_${compressSuffix(quality)}.pdf`;
       const name = fileName.replace(/\.pdf$/i, '') + suffix;
-      setSavedExport({ name, bytes });
       downloadBytes(bytes, name);
-      showToast('已导出新的 PDF。如果没看到文件，点下方再保存');
+      showToast('已导出');
     } catch (error) {
       console.error(error);
       showToast(error instanceof Error ? error.message : '导出失败');
     } finally {
       setExporting(false);
-      setPendingQuality(null);
     }
   }
 
@@ -286,18 +254,6 @@ export function Editor() {
             </button>
           </div>
         </div>
-        {savedExport && (
-          <div className="export-ready">
-            <span>文件已生成，可再保存到设备</span>
-            <button
-              type="button"
-              className="export-ready-btn"
-              onClick={() => downloadBytes(savedExport.bytes, savedExport.name)}
-            >
-              再保存
-            </button>
-          </div>
-        )}
       </div>
 
       <div
@@ -369,50 +325,91 @@ export function Editor() {
       </div>
 
       <div className="toolbar">
-        <button
-          className="tool"
-          onClick={() => {
-            stopPicking();
-            onDeletePage();
-          }}
-        >
-          <IconTrash size={22} />
-          删除
-        </button>
-        <button
-          className="tool"
-          onClick={() => {
-            stopPicking();
-            setSheet('add');
-          }}
-        >
-          <IconPlus size={22} />
-          添加
-        </button>
-        <button
-          className="tool"
-          onClick={() => {
-            stopPicking();
-            session.openSignature();
-          }}
-        >
-          <IconSign size={22} />
-          签名
-        </button>
-        <button className="tool" onClick={() => setSheet('text-menu')}>
-          <IconText size={22} />
-          文字
-        </button>
-        <button
-          className="tool"
-          onClick={() => {
-            stopPicking();
-            session.rotateCurrentPage();
-          }}
-        >
-          <IconRotate size={22} />
-          旋转
-        </button>
+        {addMode ? (
+          <>
+            <FilePick
+              className="tool"
+              accept="image/*"
+              multiple
+              label="添加图片"
+              onFiles={(files) => void onAddImage(files)}
+            >
+              <IconImage size={22} />
+              图片
+            </FilePick>
+            <FilePick
+              className="tool"
+              accept="application/pdf,.pdf"
+              label="添加 PDF"
+              onFiles={(files) => void onAddPdf(files)}
+            >
+              <IconFile size={22} />
+              PDF
+            </FilePick>
+            <button
+              className="tool"
+              onClick={() => {
+                stopPicking();
+                onAddBlank();
+              }}
+            >
+              <IconBlank size={22} />
+              空白
+            </button>
+            <button className="tool" onClick={() => setAddMode(false)}>
+              <span className="tool-cancel">×</span>
+              取消
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className="tool"
+              onClick={() => {
+                stopPicking();
+                onDeletePage();
+              }}
+            >
+              <IconTrash size={22} />
+              删除
+            </button>
+            <button
+              className="tool"
+              onClick={() => {
+                stopPicking();
+                setSheet(null);
+                setAddMode(true);
+              }}
+            >
+              <IconPlus size={22} />
+              添加
+            </button>
+            <button
+              className="tool"
+              onClick={() => {
+                stopPicking();
+                session.openSignature();
+              }}
+            >
+              <IconSign size={22} />
+              签名
+            </button>
+            <button className="tool" onClick={() => setSheet('text-menu')}>
+              <IconText size={22} />
+              文字
+            </button>
+            <button
+              className="tool"
+              onClick={() => {
+                stopPicking();
+                session.rotateCurrentPage();
+              }}
+            >
+              <IconRotate size={22} />
+              旋转
+            </button>
+          </>
+        )}
       </div>
 
       <div className="thumbs">
@@ -437,7 +434,7 @@ export function Editor() {
               docs={docs}
               maxWidth={54}
               quality="thumb"
-              eager={index === currentPageIndex || index < 8}
+              eager={Math.abs(index - currentPageIndex) <= 1}
             />
             <span className="thumb-index">{index + 1}</span>
           </div>
@@ -452,81 +449,6 @@ export function Editor() {
             setSheet(null);
           }}
         />
-      )}
-
-      {sheet === 'add' && (
-        <div className="sheet">
-          <div className="sheet-grabber" />
-          <h3>添加页面</h3>
-          <div className="sheet-group">
-          <button className="sheet-item" onClick={onAddImage}>
-            <IconImage size={20} />
-            ＋ 图片
-          </button>
-          <button className="sheet-item" onClick={onAddPdf}>
-            <IconFile size={20} />
-            ＋ PDF
-          </button>
-          <button className="sheet-item" onClick={() => setSheet('blank')}>
-            <IconBlank size={20} />
-            ＋ 空白页
-          </button>
-          </div>
-          <button className="sheet-cancel" onClick={() => setSheet(null)}>
-            取消
-          </button>
-        </div>
-      )}
-
-      {sheet === 'fit' && (
-        <div className="sheet">
-          <div className="sheet-grabber" />
-          <h3>图片怎么放进页面</h3>
-          <div className="sheet-group">
-          <button className="sheet-item" onClick={() => confirmFit('contain')}>
-            适应页面（保持比例，完整显示）
-          </button>
-          <button className="sheet-item" onClick={() => confirmFit('cover')}>
-            填满页面（保持比例，可能裁切）
-          </button>
-          <button className="sheet-item" onClick={() => confirmFit('original')}>
-            原始尺寸
-          </button>
-          </div>
-          <button className="sheet-cancel" onClick={() => setSheet(null)}>
-            取消
-          </button>
-        </div>
-      )}
-
-      {sheet === 'blank' && (
-        <div className="sheet">
-          <div className="sheet-grabber" />
-          <h3>空白页方向</h3>
-          <div className="sheet-group">
-          <button
-            className="sheet-item"
-            onClick={() => {
-              session.addBlankPage(false);
-              setSheet(null);
-            }}
-          >
-            纵向（当前页面尺寸）
-          </button>
-          <button
-            className="sheet-item"
-            onClick={() => {
-              session.addBlankPage(true);
-              setSheet(null);
-            }}
-          >
-            横向
-          </button>
-          </div>
-          <button className="sheet-cancel" onClick={() => setSheet(null)}>
-            取消
-          </button>
-        </div>
       )}
 
       {sheet === 'text-menu' && (
@@ -668,46 +590,46 @@ export function Editor() {
             <button
               className="sheet-item sheet-item-stack"
               aria-label="直接导出"
-              onClick={() => confirmExport('original')}
+              onClick={() => void confirmExport('original')}
             >
               <span className="sheet-item-row">
                 <span>直接导出</span>
                 <span className="sheet-item-meta">{formatSize(exportSizes.original)}</span>
               </span>
-              <span className="sheet-item-sub">免费，不看广告</span>
+              <span className="sheet-item-sub">保持原文件，不压缩</span>
             </button>
             <button
               className="sheet-item sheet-item-stack"
-              aria-label="高画质压缩"
-              onClick={() => startCompress('high')}
+              aria-label={COMPRESS_PRESETS.high.label}
+              onClick={() => void confirmExport('high')}
             >
               <span className="sheet-item-row">
-                <span>高画质压缩</span>
+                <span>{COMPRESS_PRESETS.high.label}</span>
                 <span className="sheet-item-meta">{formatEstimate(exportSizes.high)}</span>
               </span>
-              <span className="sheet-item-sub">看完广告后导出</span>
+              <span className="sheet-item-sub">{COMPRESS_PRESETS.high.hint}</span>
             </button>
             <button
               className="sheet-item sheet-item-stack"
-              aria-label="中画质压缩"
-              onClick={() => startCompress('medium')}
+              aria-label={COMPRESS_PRESETS.medium.label}
+              onClick={() => void confirmExport('medium')}
             >
               <span className="sheet-item-row">
-                <span>中画质压缩</span>
+                <span>{COMPRESS_PRESETS.medium.label}</span>
                 <span className="sheet-item-meta">{formatEstimate(exportSizes.medium)}</span>
               </span>
-              <span className="sheet-item-sub">看完广告后导出</span>
+              <span className="sheet-item-sub">{COMPRESS_PRESETS.medium.hint}</span>
             </button>
             <button
               className="sheet-item sheet-item-stack"
-              aria-label="低画质压缩"
-              onClick={() => startCompress('low')}
+              aria-label={COMPRESS_PRESETS.low.label}
+              onClick={() => void confirmExport('low')}
             >
               <span className="sheet-item-row">
-                <span>低画质压缩</span>
+                <span>{COMPRESS_PRESETS.low.label}</span>
                 <span className="sheet-item-meta">{formatEstimate(exportSizes.low)}</span>
               </span>
-              <span className="sheet-item-sub">看完广告后导出</span>
+              <span className="sheet-item-sub">{COMPRESS_PRESETS.low.hint}</span>
             </button>
             <button
               className="sheet-item sheet-item-stack"
@@ -718,35 +640,11 @@ export function Editor() {
                 <span>导出为图片</span>
                 <span className="sheet-item-meta">PNG</span>
               </span>
-              <span className="sheet-item-sub">免费，一页一张</span>
+              <span className="sheet-item-sub">一页一张图片</span>
             </button>
           </div>
-          <p className="sheet-note">编辑、直接导出和转图片都免费。压缩会把每一页变成图片，扫描件通常更小，纯文字稿可能变大。</p>
+          <p className="sheet-note">三种压缩会按页面长短边缩到对应清晰度，扫描件通常更小。</p>
           <button className="sheet-cancel" onClick={() => setSheet(null)}>
-            取消
-          </button>
-        </div>
-      )}
-
-      {sheet === 'ad' && pendingQuality && (
-        <div className="sheet">
-          <div className="sheet-grabber" />
-          <h3>看完广告后压缩导出</h3>
-          <p className="sheet-note ad-lead">功能都免费。只有压缩导出需要看一段广告。</p>
-          <div className="ad-slot" aria-label="广告">
-            <span>广告</span>
-          </div>
-          <p className="ad-count">
-            {adLeft > 0 ? `${adLeft} 秒后可以导出` : '可以导出了'}
-          </p>
-          <button
-            className="primary-btn ad-export"
-            disabled={adLeft > 0 || exporting}
-            onClick={() => void confirmExport(pendingQuality)}
-          >
-            {adLeft > 0 ? `请稍等 ${adLeft} 秒` : '导出压缩文件'}
-          </button>
-          <button className="sheet-cancel" onClick={() => setSheet('export')}>
             取消
           </button>
         </div>

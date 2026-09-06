@@ -176,7 +176,7 @@ console.log('signature cancel aligned');
 await page.getByRole('button', { name: '添加' }).click();
 const [addChooser] = await Promise.all([
   page.waitForEvent('filechooser'),
-  page.getByRole('button', { name: '＋ PDF' }).click()
+  page.getByLabel('添加 PDF').click()
 ]);
 await addChooser.setFiles('public/sample.pdf');
 await page.getByRole('button', { name: '全选' }).waitFor({ timeout: 15000 });
@@ -214,8 +214,7 @@ await page.waitForTimeout(400);
 console.log('rotated');
 
 await page.getByRole('button', { name: '添加' }).click();
-await page.getByRole('button', { name: '＋ 空白页' }).click();
-await page.getByRole('button', { name: '纵向（当前页面尺寸）' }).click();
+await page.getByRole('button', { name: '空白' }).click();
 await page.getByText('2 / 3').waitFor({ timeout: 8000 });
 console.log('added blank page');
 
@@ -244,12 +243,10 @@ if (exported.getPageCount() !== 3) {
 console.log('exported', download.suggestedFilename(), 'pages', exported.getPageCount());
 
 await page.getByRole('button', { name: '导出' }).click();
-await page.getByRole('button', { name: '中画质压缩' }).click();
-await page.getByText('看完广告后压缩导出').waitFor();
-await page.screenshot({ path: `${outDir}/compress_ad.png` });
-await page.getByRole('button', { name: '导出压缩文件' }).waitFor({ timeout: 8000 });
+await page.getByRole('button', { name: '适合发送' }).waitFor();
+await page.screenshot({ path: `${outDir}/compress_sizes.png` });
 const compressDownload = page.waitForEvent('download', { timeout: 30000 });
-await page.getByRole('button', { name: '导出压缩文件' }).click();
+await page.getByRole('button', { name: '适合发送' }).click();
 const compressed = await compressDownload;
 const compressedPath = `${outDir}/exported_compressed.pdf`;
 await compressed.saveAs(compressedPath);
@@ -283,7 +280,9 @@ if (mergedPdf.getPageCount() !== 6) {
 if (!mergedFile.suggestedFilename().includes('合并')) {
   throw new Error(`merged export name should keep 合并, got ${mergedFile.suggestedFilename()}`);
 }
-await page.getByRole('button', { name: '再保存' }).waitFor();
+if (await page.getByRole('button', { name: '再保存' }).count()) {
+  throw new Error('export should not ask to save again');
+}
 await page.screenshot({ path: `${outDir}/merge_export_saved.png` });
 console.log('merged export ok', mergedFile.suggestedFilename(), 'pages', mergedPdf.getPageCount());
 await page.getByRole('button', { name: '返回', exact: true }).click();

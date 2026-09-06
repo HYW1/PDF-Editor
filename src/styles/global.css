@@ -122,6 +122,8 @@ button {
 }
 
 .hero:active { transform: scale(0.985); }
+.hero:disabled,
+.action-row:disabled { opacity: 0.55; pointer-events: none; }
 
 .feature-icon {
   width: 44px;
@@ -253,39 +255,22 @@ button {
   gap: 8px;
 }
 
-.export-ready {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 4px 2px 2px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: var(--primary-soft);
+.home-busy {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background: rgba(242, 242, 247, 0.72);
+}
+
+.home-busy-card {
+  padding: 18px 22px;
+  border-radius: 16px;
+  background: #fff;
   color: var(--text);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 650;
-  line-height: 1.3;
-}
-
-.export-ready span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.export-ready-btn {
-  flex: 0 0 auto;
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--primary);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
 }
 
 .topbar-left, .topbar-right {
@@ -533,6 +518,24 @@ button {
 .tool:active { color: var(--primary); }
 .tool svg { color: var(--text); }
 .tool:active svg { color: var(--primary); }
+.tool.file-pick,
+label.tool { cursor: pointer; }
+.file-pick-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.tool-cancel {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--text);
+}
 
 .thumbs {
   display: flex;

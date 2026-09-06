@@ -1,17 +1,17 @@
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocument } from 'pdf-lib';
-import { COMPRESS_PRESETS } from './pdf-estimate';
+import { COMPRESS_PRESETS, scaleForPage, type CompressQuality } from './pdf-estimate';
 import './pdf-render';
 
-export type ExportQuality = 'original' | 'high' | 'medium' | 'low';
-
-const PRESETS = COMPRESS_PRESETS;
+export type ExportQuality = 'original' | CompressQuality;
 
 export function qualityLabel(quality: ExportQuality): string {
-  if (quality === 'original') return '原画质';
-  if (quality === 'high') return '高画质';
-  if (quality === 'medium') return '中画质';
-  return '低画质';
+  if (quality === 'original') return '原文件';
+  return COMPRESS_PRESETS[quality].label;
+}
+
+export function compressSuffix(quality: Exclude<ExportQuality, 'original'>): string {
+  return COMPRESS_PRESETS[quality].label.replace(/^适合/, '');
 }
 
 export async function compressPdfBytes(
@@ -19,7 +19,7 @@ export async function compressPdfBytes(
   quality: Exclude<ExportQuality, 'original'>,
   onProgress?: (done: number, total: number) => void
 ): Promise<Uint8Array> {
-  const preset = PRESETS[quality];
+  const preset = COMPRESS_PRESETS[quality];
   const data = new Uint8Array(bytes.byteLength);
   data.set(bytes);
   const pdf = await pdfjs.getDocument({ data }).promise;
@@ -30,11 +30,7 @@ export async function compressPdfBytes(
     onProgress?.(index, total);
     const page = await pdf.getPage(index);
     const base = page.getViewport({ scale: 1 });
-    let scale = preset.scale;
-    const maxEdge = 4096;
-    if (base.width * scale > maxEdge || base.height * scale > maxEdge) {
-      scale = maxEdge / Math.max(base.width, base.height);
-    }
+    const scale = scaleForPage(base.width, base.height, preset.maxEdge);
     const viewport = page.getViewport({ scale });
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.floor(viewport.width));
