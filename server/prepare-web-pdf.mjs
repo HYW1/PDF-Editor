@@ -141,6 +141,35 @@ export function fallbackPdfOptions() {
   };
 }
 
+function paperInches(options) {
+  if (options.format === 'A4') return { paperWidth: 8.27, paperHeight: 11.69 };
+  return {
+    paperWidth: (parseFloat(options.width) || 900) / 96,
+    paperHeight: (parseFloat(options.height) || 1273) / 96
+  };
+}
+
+async function printWithCdp(page, options) {
+  if (typeof page.createCDPSession !== 'function') return null;
+  const session = await page.createCDPSession();
+  try {
+    const paper = paperInches(options);
+    const result = await session.send('Page.printToPDF', {
+      printBackground: true,
+      paperWidth: paper.paperWidth,
+      paperHeight: paper.paperHeight,
+      scale: options.scale || 1,
+      preferCSSPageSize: false,
+      generateTaggedPDF: false,
+      generateDocumentOutline: false
+    });
+    if (!result?.data) throw new Error('cdp pdf empty');
+    return Buffer.from(result.data, 'base64');
+  } finally {
+    await session.detach().catch(() => {});
+  }
+}
+
 export async function printPageToPdf(page, size) {
   try {
     await page.evaluate((compact) => {
@@ -160,6 +189,13 @@ export async function printPageToPdf(page, size) {
   let lastError;
   for (const options of attempts) {
     try {
+      const viaCdp = await printWithCdp(page, options);
+      if (viaCdp && viaCdp.byteLength > 200) return viaCdp;
+    } catch (error) {
+      lastError = error;
+      console.warn('cdp pdf failed', error);
+    }
+    try {
       const bytes = await page.pdf(options);
       if (bytes && bytes.byteLength > 200) return bytes;
       lastError = new Error('empty pdf');
@@ -168,8 +204,8 @@ export async function printPageToPdf(page, size) {
       console.warn('page.pdf failed', error);
     }
   }
-  const detail = String(lastError?.message || lastError || 'empty pdf').replace(/\s+/g, ' ').slice(0, 70);
-  const error = new Error(`网页打开了，但生成失败`);
+  const detail = String(lastError?.message || lastError || 'empty pdf').replace(/\s+/g, ' ').slice(0, 80);
+  const error = new Error(`网页打开了，但生成失败：${detail}`);
   error.expose = true;
   console.error('printPageToPdf', detail);
   throw error;

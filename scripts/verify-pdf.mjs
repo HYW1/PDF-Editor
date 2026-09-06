@@ -1,7 +1,7 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
 import { headersForUrl, isNoiseUrl, openAnyPublicPage } from '../server/open-web-page.mjs';
 import { parsePageUrl } from '../server/parse-page-url.mjs';
-import { fallbackPdfOptions, pdfOptionsForWebPage } from '../server/prepare-web-pdf.mjs';
+import { fallbackPdfOptions, pdfOptionsForWebPage, printPageToPdf } from '../server/prepare-web-pdf.mjs';
 
 function fitImage(imageW, imageH, pageW, pageH, mode) {
   if (mode === 'original') {
@@ -192,4 +192,29 @@ assert(
     else process.env.VERCEL = prevVercel;
   }
   console.log('vercel fetch-keep ok');
+}
+
+{
+  const fake = Buffer.from(`%PDF-1.4\n${'x'.repeat(240)}`);
+  const bytes = await printPageToPdf(
+    {
+      async evaluate() {},
+      async createCDPSession() {
+        return {
+          async send(method, params) {
+            if (method !== 'Page.printToPDF') throw new Error(method);
+            if (!params.paperWidth || params.generateTaggedPDF) throw new Error('bad cdp pdf params');
+            return { data: fake.toString('base64') };
+          },
+          async detach() {}
+        };
+      },
+      async pdf() {
+        throw new Error('should print with cdp first');
+      }
+    },
+    { width: 900, height: 1200 }
+  );
+  assert(bytes.byteLength === fake.byteLength, 'cdp pdf bytes');
+  console.log('cdp pdf print ok');
 }
