@@ -344,6 +344,7 @@ assert(!isPlaceholderUrl('https://img.zcool.cn/community/01abc.jpg'), 'zcool wor
   assert(!promoted.includes('bg-placeholder.jpg'), 'drop the gray placeholder src');
 }
 assert(PAGE_PRINT_CSS.includes('loginGuide'), 'print css hides the zcool login overlay');
+assert(PAGE_PRINT_CSS.includes('[class*="Fixed"]'), 'print css unfixes zcool headers');
 console.log('inline url ok');
 
 {

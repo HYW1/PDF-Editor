@@ -206,7 +206,8 @@ export function stripNonContent(html) {
 
 export const PAGE_PRINT_CSS = `
 html, body { height: auto !important; max-height: none !important; overflow: visible !important; }
-header, .header, nav, .nav, .topbar, [class*="sticky"], [class*="fixed"] {
+header, .header, nav, .nav, .topbar,
+[class*="sticky"], [class*="Sticky"], [class*="fixed"], [class*="Fixed"] {
   position: relative !important;
   top: auto !important;
   bottom: auto !important;
