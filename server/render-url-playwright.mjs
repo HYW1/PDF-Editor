@@ -7,7 +7,7 @@ import {
   userAgentForUrl,
   viewportForUrl
 } from './open-web-page.mjs';
-import { printPageToPdf } from './prepare-web-pdf.mjs';
+import { printOpenedPage } from './prepare-web-pdf.mjs';
 
 let browserPromise = null;
 
@@ -44,11 +44,8 @@ export async function renderUrlToPdf(targetUrl, onProgress) {
     await page.addInitScript(stealthScript);
     await page.emulateMedia({ media: 'screen' });
     await openAnyPublicPage(page, targetUrl, onProgress);
-    const { size, name } = await finishOpenPage(page, targetUrl, onProgress);
-    onProgress?.(86, '正在生成 PDF');
-    const bytes = await printPageToPdf(page, size);
-    onProgress?.(96, '即将完成');
-    return { bytes, name };
+    const opened = await finishOpenPage(page, targetUrl, onProgress);
+    return await printOpenedPage(page, opened, onProgress, () => browser.newPage());
   } finally {
     await page.close().catch(() => {});
   }

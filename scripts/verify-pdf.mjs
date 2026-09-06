@@ -1,7 +1,13 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
 import { headersForUrl, isNoiseUrl, openAnyPublicPage } from '../server/open-web-page.mjs';
 import { parsePageUrl } from '../server/parse-page-url.mjs';
-import { fallbackPdfOptions, pdfOptionsForWebPage, printPageToPdf } from '../server/prepare-web-pdf.mjs';
+import {
+  articleFallbackHtml,
+  fallbackPdfOptions,
+  pdfOptionsForWebPage,
+  printOpenedPage,
+  printPageToPdf
+} from '../server/prepare-web-pdf.mjs';
 
 function fitImage(imageW, imageH, pageW, pageH, mode) {
   if (mode === 'original') {
@@ -217,4 +223,43 @@ assert(
   );
   assert(bytes.byteLength === fake.byteLength, 'cdp pdf bytes');
   console.log('cdp pdf print ok');
+}
+
+{
+  const html = articleFallbackHtml('优设合集', '大家好，这是 9 月整理的第二波 AI 干货合集');
+  assert(html.includes('大家好，这是 9 月整理的第二波'), 'fallback html keeps article text');
+  const fake = Buffer.from(`%PDF-1.4\n${'y'.repeat(240)}`);
+  let usedFallback = false;
+  const result = await printOpenedPage(
+    {
+      async evaluate() {},
+      async pdf() {
+        throw new Error('Protocol error (Page.printToPDF): Session closed. Most likely the page');
+      }
+    },
+    { size: { width: 900, height: 1200 }, name: '优设合集.pdf', title: '优设合集', text: '大家好，这是 9 月整理的第二波 AI 干货合集。这一期整理了多个 Skill。' },
+    () => {},
+    async () => {
+      usedFallback = true;
+      return {
+        async setContent() {},
+        async evaluate() {},
+        async createCDPSession() {
+          return {
+            async send() {
+              return { data: fake.toString('base64') };
+            },
+            async detach() {}
+          };
+        },
+        async pdf() {
+          throw new Error('should use cdp');
+        },
+        async close() {}
+      };
+    }
+  );
+  assert(usedFallback, 'closed page should fall back to saved text');
+  assert(result.bytes.byteLength === fake.byteLength, 'fallback pdf bytes');
+  console.log('text fallback print ok');
 }

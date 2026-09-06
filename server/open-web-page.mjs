@@ -118,6 +118,7 @@ export async function loadPageFromHtml(page, targetUrl, onProgress) {
     html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${safeBase}">`);
   }
   onProgress?.(50, '正在打开网页');
+  await freezePageNetwork(page);
   const bootstrap = `data:text/html;charset=utf-8,${encodeURIComponent(
     `<!doctype html><html><head><meta charset="utf-8"><base href="${safeBase}"></head><body></body></html>`
   )}`;
@@ -132,6 +133,25 @@ export async function loadPageFromHtml(page, targetUrl, onProgress) {
     /* HTML is already in the page even if stylesheets or images hang. */
   }
   onProgress?.(58, '网页已打开');
+}
+
+export async function freezePageNetwork(page) {
+  if (page._pdfHelperFrozen) return;
+  page._pdfHelperFrozen = true;
+  if (typeof page.setRequestInterception === 'function') {
+    try {
+      await page.setRequestInterception(true);
+      page.on('request', (req) => {
+        const url = String(req.url() || '');
+        if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('about:')) {
+          return req.continue();
+        }
+        return req.abort().catch(() => {});
+      });
+    } catch (error) {
+      console.warn('freeze network', error);
+    }
+  }
 }
 
 export async function openAnyPublicPage(page, targetUrl, onProgress) {
@@ -242,13 +262,30 @@ export function throwIfBlocked(info) {
   }
 }
 
+export async function snapshotPageText(page) {
+  try {
+    return await page.evaluate(() => ({
+      title: document.title || '',
+      text: (document.body?.innerText || document.body?.textContent || '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+        .slice(0, 200000)
+    }));
+  } catch {
+    return { title: '', text: '' };
+  }
+}
+
 export async function finishOpenPage(page, targetUrl, onProgress) {
   onProgress?.(68, '正在整理页面');
   await waitForPageContent(page, targetUrl).catch(() => {});
   const info = await inspectPageAccess(page);
   throwIfBlocked(info);
-  await revealSiteContent(page).catch(() => {});
-  await prepareWebPageForPdf(page).catch(() => {});
+  const snap = await snapshotPageText(page);
+  if (!process.env.VERCEL) {
+    await revealSiteContent(page).catch(() => {});
+    await prepareWebPageForPdf(page).catch(() => {});
+  }
   const again = await inspectPageAccess(page);
   throwIfBlocked(again);
   if (again.empty && !process.env.VERCEL) throw userFacing('页面是空的，可能被网站拦下了');
@@ -258,8 +295,11 @@ export async function finishOpenPage(page, targetUrl, onProgress) {
   } catch {
     /* keep a printable default size */
   }
+  const title = again.title || snap.title;
   return {
     size,
-    name: pdfNameFromTitle(again.title, new URL(targetUrl).hostname)
+    title,
+    text: snap.text,
+    name: pdfNameFromTitle(title, new URL(targetUrl).hostname)
   };
 }

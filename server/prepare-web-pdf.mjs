@@ -210,3 +210,50 @@ export async function printPageToPdf(page, size) {
   console.error('printPageToPdf', detail);
   throw error;
 }
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"]/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;'
+  })[char]);
+}
+
+export function articleFallbackHtml(title, text) {
+  const safeTitle = escapeHtml(title || '网页');
+  const safeText = escapeHtml(text || '');
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${safeTitle}</title>
+<style>
+  body { font: 16px/1.65 -apple-system, BlinkMacSystemFont, 'Noto Sans SC', 'PingFang SC', sans-serif; margin: 28px; color: #111; }
+  h1 { font-size: 22px; line-height: 1.4; margin: 0 0 16px; }
+  p { white-space: pre-wrap; margin: 0; }
+</style></head>
+<body><h1>${safeTitle}</h1><p>${safeText}</p></body></html>`;
+}
+
+export async function printOpenedPage(page, opened, onProgress, openFallbackPage) {
+  onProgress?.(86, '正在生成 PDF');
+  try {
+    const bytes = await printPageToPdf(page, opened.size);
+    onProgress?.(96, '即将完成');
+    return { bytes, name: opened.name };
+  } catch (error) {
+    console.warn('visual print failed', error);
+    const compact = String(opened.text || '').replace(/\s+/g, '');
+    if (compact.length < 20 || typeof openFallbackPage !== 'function') throw error;
+    onProgress?.(88, '正在保存文字内容');
+    const fallback = await openFallbackPage();
+    try {
+      await fallback.setContent(articleFallbackHtml(opened.title || opened.name, opened.text), {
+        waitUntil: 'domcontentloaded',
+        timeout: 8000
+      });
+      const bytes = await printPageToPdf(fallback, { width: 800, height: 1131 });
+      onProgress?.(96, '即将完成');
+      return { bytes, name: opened.name };
+    } finally {
+      await fallback.close().catch(() => {});
+    }
+  }
+}
