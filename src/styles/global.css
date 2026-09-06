@@ -518,14 +518,15 @@ button {
 .tool:active { color: var(--primary); }
 .tool svg { color: var(--text); }
 .tool:active svg { color: var(--primary); }
-.tool.file-pick,
-label.tool { cursor: pointer; }
+label.tool {
+  position: relative;
+  cursor: pointer;
+}
 .file-pick-input {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  inset: 0;
   opacity: 0;
-  pointer-events: none;
+  cursor: pointer;
 }
 .tool-cancel {
   display: grid;

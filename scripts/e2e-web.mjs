@@ -174,6 +174,7 @@ await page.getByText('1 / 3').waitFor();
 console.log('signature cancel aligned');
 
 await page.getByRole('button', { name: '添加' }).click();
+await page.getByText('PDF', { exact: true }).waitFor();
 const [addChooser] = await Promise.all([
   page.waitForEvent('filechooser'),
   page.getByLabel('添加 PDF').click()
