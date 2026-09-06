@@ -358,7 +358,7 @@ if (!(await page.locator('.ann-delete').count())) {
 await page.locator('.topbar .nav-btn').click();
 await page.getByText('返回后，这次还没导出的修改会丢掉。').waitFor();
 await page.locator('.sheet').getByRole('button', { name: '留下' }).click();
-await page.getByText('1 / 3').waitFor();
+await page.locator('.export-btn').waitFor();
 await page.locator('.topbar .nav-btn').click();
 await page.locator('.sheet').getByRole('button', { name: '返回', exact: true }).click();
 await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
