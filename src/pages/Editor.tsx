@@ -66,8 +66,8 @@ export function Editor() {
       const ratio = currentPage ? currentPage.height / currentPage.width : 1.414;
       const availW = Math.max(160, el.clientWidth - 24);
       const availH = Math.max(160, el.clientHeight - 24);
-      const widthFromHeight = availH / ratio;
-      setPreviewWidth(Math.floor(Math.min(availW, widthFromHeight, 620)));
+      const widthFromHeight = availH / Math.max(ratio, 0.08);
+      setPreviewWidth(Math.floor(Math.min(availW, widthFromHeight, 680)));
     };
     update();
     const observer = new ResizeObserver(update);
@@ -183,17 +183,19 @@ export function Editor() {
           total
         });
       });
+      const beforeCompress = bytes.byteLength;
       if (quality !== 'original') {
         bytes = await compressPdfBytes(bytes, quality, (done, total) => {
           setJob({ title: '正在压缩', done, total });
         });
       }
       recordExport();
-      const suffix = quality === 'original' ? '_编辑.pdf' : `_${compressSuffix(quality)}.pdf`;
+      const shrunk = quality !== 'original' && bytes.byteLength < beforeCompress;
+      const suffix = quality === 'original' || !shrunk ? '_编辑.pdf' : `_${compressSuffix(quality)}.pdf`;
       const name = fileName.replace(/\.pdf$/i, '') + suffix;
       downloadBytes(bytes, name);
       setJob(null);
-      showToast('已导出');
+      showToast(quality !== 'original' && !shrunk ? '这份文件已经很小，压不下去了' : '已导出');
     } catch (error) {
       console.error(error);
       setJob(null);
@@ -659,7 +661,7 @@ export function Editor() {
               <span className="sheet-item-sub">一页一张图片</span>
             </button>
           </div>
-          <p className="sheet-note">体积按当前文件估算。扫描件、图片多通常能压小，纯文字稿压完可能差不多。</p>
+          <p className="sheet-note">压缩会压到比原文件小。扫描件、PPT、图片多通常更明显；已经很小或纯文字的稿，可能压不下去。</p>
           <button className="sheet-cancel" onClick={() => setSheet(null)}>
             取消
           </button>

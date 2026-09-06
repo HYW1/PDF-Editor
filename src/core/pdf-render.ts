@@ -94,6 +94,8 @@ export async function renderPageToCanvas(
 
   canvas.style.width = `${cssWidth}px`;
   canvas.style.height = `${cssHeight}px`;
+  canvas.style.minWidth = '0';
+  canvas.style.minHeight = '0';
 
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) return;
@@ -140,13 +142,18 @@ export async function renderPageToCanvas(
     if (renderTokens.get(canvas) !== token) return;
     const pdfPage = await pdf.getPage(page.source.pageIndex + 1);
     const base = pdfPage.getViewport({ scale: 1, rotation: page.rotation });
-    const scale = cssWidth / base.width;
-    const viewport = pdfPage.getViewport({ scale, rotation: page.rotation });
-    canvas.style.height = `${viewport.height}px`;
-    canvas.height = Math.round(viewport.height * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cssH = cssWidth * (base.height / Math.max(base.width, 1));
+    canvas.style.width = `${cssWidth}px`;
+    canvas.style.height = `${cssH}px`;
+    const viewport = pdfPage.getViewport({
+      scale: (cssWidth * dpr) / Math.max(base.width, 1),
+      rotation: page.rotation
+    });
+    canvas.width = Math.max(1, Math.round(viewport.width));
+    canvas.height = Math.max(1, Math.round(viewport.height));
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, viewport.width, viewport.height);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     const task = pdfPage.render({
       canvasContext: ctx,
       viewport,

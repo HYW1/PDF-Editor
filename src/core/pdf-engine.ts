@@ -79,8 +79,8 @@ async function loadPdfBytesSlow(
       Array.from({ length: end - start + 1 }, (_, offset) => pdf.getPage(start + offset))
     );
     for (const [offset, pdfPage] of slice.entries()) {
-      const viewport = pdfPage.getViewport({ scale: 1, rotation: 0 });
       const rotation = normalizeRotation(pdfPage.rotate || 0);
+      const viewport = pdfPage.getViewport({ scale: 1, rotation });
       pages.push({
         id: generateId('page'),
         width: viewport.width,
@@ -135,7 +135,15 @@ export async function makeImagePages(
 }
 
 export function rotatePage(page: PageInfo, delta = 90): PageInfo {
-  return { ...page, rotation: normalizeRotation(page.rotation + delta), nativeRotation: page.nativeRotation };
+  const rotation = normalizeRotation(page.rotation + delta);
+  const swap = Math.abs(delta / 90) % 2 === 1;
+  return {
+    ...page,
+    rotation,
+    width: swap ? page.height : page.width,
+    height: swap ? page.width : page.height,
+    nativeRotation: page.nativeRotation
+  };
 }
 
 export function movePage(pages: PageInfo[], from: number, to: number): PageInfo[] {

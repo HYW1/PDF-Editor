@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
 
 async function extractPdfText(bytes) {
@@ -34,6 +34,77 @@ async function assertTopbarRow(page, label) {
   if (Math.abs(metrics.firstCenterY - metrics.secondCenterY) > 8) {
     throw new Error(`${label} topbar misaligned: ${JSON.stringify(metrics)}`);
   }
+}
+
+async function assertExportFits(page, label, viewportWidth) {
+  const box = await page.locator('.export-btn').boundingBox();
+  if (!box) throw new Error(`${label} export button missing`);
+  if (box.x + box.width > viewportWidth + 1) {
+    throw new Error(
+      `${label} export button clipped: right=${box.x + box.width} viewport=${viewportWidth}`
+    );
+  }
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  if (overflow) {
+    throw new Error(`${label} page overflows horizontally`);
+  }
+}
+
+async function assertPreviewFlush(page, label) {
+  await page.locator('.page-stage canvas').waitFor({ timeout: 15000 });
+  await page.waitForTimeout(400);
+  const metrics = await page.evaluate(() => {
+    const stage = document.querySelector('.page-stage');
+    const canvas = stage?.querySelector('canvas');
+    if (!stage || !canvas) return { error: 'missing preview' };
+    const sr = stage.getBoundingClientRect();
+    const cr = canvas.getBoundingClientRect();
+    return {
+      stageW: sr.width,
+      canvasW: cr.width,
+      gap: sr.width - cr.width,
+      overflow: document.documentElement.scrollWidth > window.innerWidth + 1
+    };
+  });
+  if (metrics.error) throw new Error(`${label} ${metrics.error}`);
+  if (metrics.gap > 3) {
+    throw new Error(`${label} preview has a white gap: ${JSON.stringify(metrics)}`);
+  }
+  if (metrics.overflow) {
+    throw new Error(`${label} preview overflowed the screen`);
+  }
+}
+
+async function makeFatLandscapePdf(page) {
+  const jpegBytes = new Uint8Array(
+    await page.evaluate(async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1600;
+      canvas.height = 900;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('no canvas');
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, 0, 1600, 900);
+      for (let i = 0; i < 500; i += 1) {
+        ctx.fillStyle = `hsl(${(i * 17) % 360} 72% 52%)`;
+        ctx.fillRect((i * 37) % 1600, (i * 53) % 900, 90, 54);
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '72px sans-serif';
+      ctx.fillText('2026 DESIGN PORTFOLIO', 64, 160);
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob((value) => (value ? resolve(value) : reject(new Error('jpeg failed'))), 'image/jpeg', 0.95);
+      });
+      return Array.from(new Uint8Array(await blob.arrayBuffer()));
+    })
+  );
+  const pdf = await PDFDocument.create();
+  const image = await pdf.embedJpg(jpegBytes);
+  for (let i = 0; i < 4; i += 1) {
+    const dest = pdf.addPage([720, 405]);
+    dest.drawImage(image, { x: 0, y: 0, width: 720, height: 405 });
+  }
+  return Buffer.from(await pdf.save());
 }
 
 async function assertNavInline(locator, label) {
@@ -257,7 +328,17 @@ const compressedPdf = await PDFDocument.load(await readFile(compressedPath));
 if (compressedPdf.getPageCount() !== 3) {
   throw new Error(`compressed page count ${compressedPdf.getPageCount()}, expected 3`);
 }
-console.log('compressed', compressed.suggestedFilename(), 'pages', compressedPdf.getPageCount());
+const exportedBytes = await readFile(downloadPath);
+const compressedBytes = await readFile(compressedPath);
+if (compressedBytes.byteLength > exportedBytes.byteLength) {
+  throw new Error(
+    `compress grew the file ${exportedBytes.byteLength} -> ${compressedBytes.byteLength}`
+  );
+}
+console.log('compressed', compressed.suggestedFilename(), 'pages', compressedPdf.getPageCount(), {
+  from: exportedBytes.byteLength,
+  to: compressedBytes.byteLength
+});
 
 await page.screenshot({ path: `${outDir}/editor_after_edits.png` });
 await page.getByRole('button', { name: '返回', exact: true }).click();
@@ -317,6 +398,37 @@ if (zipBytes[0] !== 0x50 || zipBytes[1] !== 0x4b) {
 }
 console.log('pdf to images ok', imageZip.suggestedFilename());
 
+const fatPath = `${outDir}/fat-landscape.pdf`;
+await writeFile(fatPath, await makeFatLandscapePdf(page));
+const [fatChooser] = await Promise.all([
+  page.waitForEvent('filechooser'),
+  page.getByRole('button', { name: '编辑 PDF' }).click()
+]);
+await fatChooser.setFiles(fatPath);
+await page.getByText('1 / 4').waitFor({ timeout: 15000 });
+await assertPreviewFlush(page, 'landscape preview');
+await page.screenshot({ path: `${outDir}/editor_landscape_preview.png` });
+const fatOriginal = await readFile(fatPath);
+await page.getByRole('button', { name: '导出' }).click();
+const fatDownload = page.waitForEvent('download', { timeout: 45000 });
+await page.getByRole('button', { name: '适合微信' }).click();
+await page.getByText('正在压缩').waitFor({ timeout: 8000 });
+const fatFile = await fatDownload;
+const fatOutPath = `${outDir}/fat-landscape-wechat.pdf`;
+await fatFile.saveAs(fatOutPath);
+const fatCompressed = await readFile(fatOutPath);
+if (fatCompressed.byteLength >= fatOriginal.byteLength) {
+  throw new Error(
+    `landscape compress did not shrink ${fatOriginal.byteLength} -> ${fatCompressed.byteLength}`
+  );
+}
+console.log('landscape compress ok', {
+  from: fatOriginal.byteLength,
+  to: fatCompressed.byteLength
+});
+await page.getByRole('button', { name: '返回', exact: true }).click();
+await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
+
 const mobile = await browser.newPage({
   viewport: { width: 390, height: 844 },
   isMobile: true,
@@ -340,6 +452,19 @@ await assertNavInline(mobileBack, 'mobile web-to-pdf back');
 await assertTopbarRow(mobile, 'mobile web-to-pdf');
 await mobile.screenshot({ path: `${outDir}/web_to_pdf_mobile.png` });
 console.log('web-to-pdf mobile form ok');
+
+await mobile.getByRole('button', { name: '返回', exact: true }).click();
+await mobile.getByRole('heading', { name: 'PDF小助手' }).waitFor();
+const [mobileChooser] = await Promise.all([
+  mobile.waitForEvent('filechooser'),
+  mobile.getByRole('button', { name: '编辑 PDF' }).click()
+]);
+await mobileChooser.setFiles(fatPath);
+await mobile.getByText('1 / 4').waitFor({ timeout: 15000 });
+await assertExportFits(mobile, 'mobile editor', 390);
+await assertPreviewFlush(mobile, 'mobile landscape preview');
+await mobile.screenshot({ path: `${outDir}/editor_mobile_landscape.png` });
+console.log('mobile editor layout ok');
 
 await browser.close();
 console.log('e2e passed');

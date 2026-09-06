@@ -1,9 +1,21 @@
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocument } from 'pdf-lib';
-import { COMPRESS_PRESETS, scaleForPage, type CompressQuality } from './pdf-estimate';
+import {
+  COMPRESS_PRESETS,
+  compressProfile,
+  scaleForPage,
+  type CompressQuality
+} from './pdf-estimate';
 import './pdf-render';
 
 export type ExportQuality = 'original' | CompressQuality;
+
+const RETRY_PROFILES = [
+  { maxEdge: 1000, jpegQuality: 0.42 },
+  { maxEdge: 800, jpegQuality: 0.32 },
+  { maxEdge: 640, jpegQuality: 0.24 },
+  { maxEdge: 512, jpegQuality: 0.18 }
+] as const;
 
 export function qualityLabel(quality: ExportQuality): string {
   if (quality === 'original') return '原文件';
@@ -19,10 +31,33 @@ export async function compressPdfBytes(
   quality: Exclude<ExportQuality, 'original'>,
   onProgress?: (done: number, total: number) => void
 ): Promise<Uint8Array> {
-  const preset = COMPRESS_PRESETS[quality];
+  const originalSize = bytes.byteLength;
   const data = new Uint8Array(bytes.byteLength);
   data.set(bytes);
   const pdf = await pdfjs.getDocument({ data }).promise;
+  const profiles = [
+    compressProfile(originalSize, pdf.numPages, quality),
+    ...RETRY_PROFILES
+  ];
+
+  try {
+    let best: Uint8Array | null = null;
+    for (const profile of profiles) {
+      const next = await rasterizePdf(pdf, profile, onProgress);
+      if (!best || next.byteLength < best.byteLength) best = next;
+      if (best.byteLength < originalSize) return best;
+    }
+    return bytes;
+  } finally {
+    await pdf.destroy().catch(() => undefined);
+  }
+}
+
+async function rasterizePdf(
+  pdf: pdfjs.PDFDocumentProxy,
+  profile: { maxEdge: number; jpegQuality: number },
+  onProgress?: (done: number, total: number) => void
+): Promise<Uint8Array> {
   const out = await PDFDocument.create();
   const total = pdf.numPages;
 
@@ -30,7 +65,7 @@ export async function compressPdfBytes(
     onProgress?.(index, total);
     const page = await pdf.getPage(index);
     const base = page.getViewport({ scale: 1 });
-    const scale = scaleForPage(base.width, base.height, preset.maxEdge);
+    const scale = scaleForPage(base.width, base.height, profile.maxEdge);
     const viewport = page.getViewport({ scale });
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.floor(viewport.width));
@@ -40,16 +75,17 @@ export async function compressPdfBytes(
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvasContext: ctx, viewport }).promise;
-    const jpeg = await canvasToJpeg(canvas, preset.jpeg);
+    const jpeg = await canvasToJpeg(canvas, profile.jpegQuality);
     canvas.width = 0;
     canvas.height = 0;
     const image = await out.embedJpg(jpeg);
     const dest = out.addPage([base.width, base.height]);
     dest.drawImage(image, { x: 0, y: 0, width: base.width, height: base.height });
+    page.cleanup();
     await new Promise((resolve) => window.setTimeout(resolve, 0));
   }
 
-  return out.save({ useObjectStreams: false });
+  return out.save({ useObjectStreams: true });
 }
 
 function canvasToJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Uint8Array> {

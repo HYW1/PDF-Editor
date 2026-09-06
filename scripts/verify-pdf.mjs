@@ -289,11 +289,12 @@ console.log('inline url ok');
 
 function scaleForPage(width, height, maxEdge) {
   const longEdge = Math.max(width, height, 1);
-  return Math.min(maxEdge / longEdge, 2);
+  return Math.min(1, maxEdge / longEdge);
 }
 assert(scaleForPage(595, 842, 960) < scaleForPage(595, 842, 1800), 'tighter size uses smaller scale');
 assert(Math.abs(scaleForPage(1800, 1100, 1800) - 1) < 0.001, 'already at target edge');
-assert(scaleForPage(400, 400, 1800) === 2, 'tiny pages should cap scale');
+assert(scaleForPage(400, 400, 1800) === 1, 'never upscale a small page');
+assert(scaleForPage(720, 540, 1800) === 1, 'PPT pages stay at 1x');
 
 function clampCompressEstimate(pixelBytes, originalBytes, ratio) {
   const original = Math.max(originalBytes, 1024);
@@ -313,4 +314,9 @@ const printBig = clampCompressEstimate(8 * 1024 * 1024, bigOriginal, 0.72);
 const sendBig = clampCompressEstimate(5 * 1024 * 1024, bigOriginal, 0.4);
 const wechatBig = clampCompressEstimate(2 * 1024 * 1024, bigOriginal, 0.18);
 assert(printBig < bigOriginal && sendBig < printBig && wechatBig < sendBig, 'sizes should step down');
+const pptOriginal = Math.round(15.7 * 1024 * 1024);
+const pptPrint = clampCompressEstimate(220 * 1024 * 56, pptOriginal, 0.72);
+const pptSend = clampCompressEstimate(120 * 1024 * 56, pptOriginal, 0.4);
+const pptWechat = clampCompressEstimate(50 * 1024 * 56, pptOriginal, 0.18);
+assert(pptPrint < pptOriginal && pptSend < pptPrint && pptWechat < pptSend, '56-page PPT estimates must stay below the original');
 console.log('compress size presets ok');

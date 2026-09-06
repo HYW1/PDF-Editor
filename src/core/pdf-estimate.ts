@@ -39,7 +39,35 @@ export function formatEstimate(bytes: number): string {
 
 export function scaleForPage(width: number, height: number, maxEdge: number): number {
   const longEdge = Math.max(width, height, 1);
-  return Math.min(maxEdge / longEdge, 2);
+  return Math.min(1, maxEdge / longEdge);
+}
+
+export function compressProfile(
+  originalBytes: number,
+  pageCount: number,
+  quality: CompressQuality
+): { maxEdge: number; jpegQuality: number } {
+  const preset = COMPRESS_PRESETS[quality];
+  const perPage = (Math.max(originalBytes, 1024) * preset.ratio) / Math.max(1, pageCount);
+  let maxEdge: number = preset.maxEdge;
+  let jpegQuality: number = preset.jpeg;
+  if (perPage < 28_000) {
+    maxEdge = Math.min(maxEdge, 640);
+    jpegQuality = Math.min(jpegQuality, 0.28);
+  } else if (perPage < 55_000) {
+    maxEdge = Math.min(maxEdge, 800);
+    jpegQuality = Math.min(jpegQuality, 0.36);
+  } else if (perPage < 100_000) {
+    maxEdge = Math.min(maxEdge, 1000);
+    jpegQuality = Math.min(jpegQuality, 0.48);
+  } else if (perPage < 180_000) {
+    maxEdge = Math.min(maxEdge, 1280);
+    jpegQuality = Math.min(jpegQuality, 0.58);
+  } else {
+    maxEdge = Math.min(maxEdge, 1600);
+    jpegQuality = Math.min(jpegQuality, 0.68);
+  }
+  return { maxEdge, jpegQuality };
 }
 
 export function estimateOriginalBytes(
