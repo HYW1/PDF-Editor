@@ -291,7 +291,7 @@ function scaleForPage(width, height, maxEdge) {
   const longEdge = Math.max(width, height, 1);
   return Math.min(1, maxEdge / longEdge);
 }
-assert(scaleForPage(595, 842, 960) < scaleForPage(595, 842, 1800), 'tighter size uses smaller scale');
+assert(scaleForPage(2000, 1200, 960) < scaleForPage(2000, 1200, 1800), 'tighter size uses smaller scale');
 assert(Math.abs(scaleForPage(1800, 1100, 1800) - 1) < 0.001, 'already at target edge');
 assert(scaleForPage(400, 400, 1800) === 1, 'never upscale a small page');
 assert(scaleForPage(720, 540, 1800) === 1, 'PPT pages stay at 1x');
