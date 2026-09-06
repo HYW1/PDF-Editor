@@ -57,7 +57,14 @@ export function VisiblePageCanvas({
 
   return (
     <div ref={slot} className={`page-canvas-slot ${className || ''}`}>
-      {visible ? <PageCanvas {...props} /> : <div className="page-canvas-skel" />}
+      {visible ? (
+        <PageCanvas {...props} />
+      ) : (
+        <div
+          className="page-canvas-skel"
+          style={{ aspectRatio: `${Math.max(props.page.width, 1)} / ${Math.max(props.page.height, 1)}` }}
+        />
+      )}
     </div>
   );
 }

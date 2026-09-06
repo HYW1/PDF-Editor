@@ -30,10 +30,12 @@ export function WebToPdf() {
   const [toast, setToast] = useState<string | null>(null);
   const startedAt = useRef(0);
   const progressRef = useRef(0);
+  const toastTimer = useRef(0);
 
   function showToast(message: string) {
     setToast(message);
-    window.setTimeout(() => setToast(null), 2400);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2400);
   }
 
   useEffect(() => {

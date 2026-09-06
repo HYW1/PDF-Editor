@@ -115,22 +115,40 @@ export function makeBlankPage(pages: PageInfo[], landscape = false): PageInfo {
 export async function makeImagePages(
   files: File[],
   pageSize: { width: number; height: number },
-  fit: FitMode
+  fit: FitMode,
+  matchOrientation = false
 ): Promise<PageInfo[]> {
   return Promise.all(
-    files.map(async (file) => ({
-      id: generateId('page'),
-      width: pageSize.width,
-      height: pageSize.height,
-      rotation: 0,
-      source: {
-        kind: 'image' as const,
-        bytes: copyBuffer(await file.arrayBuffer()),
-        mime: file.type || guessMime(file.name),
-        name: file.name,
-        fit
+    files.map(async (file) => {
+      const bytes = copyBuffer(await file.arrayBuffer());
+      const mime = file.type || guessMime(file.name);
+      let width = pageSize.width;
+      let height = pageSize.height;
+      if (matchOrientation && typeof createImageBitmap !== 'undefined') {
+        try {
+          const bitmap = await createImageBitmap(new Blob([bytes], { type: mime || 'image/png' }));
+          const landscape = bitmap.width > bitmap.height;
+          width = landscape ? Math.max(pageSize.width, pageSize.height) : Math.min(pageSize.width, pageSize.height);
+          height = landscape ? Math.min(pageSize.width, pageSize.height) : Math.max(pageSize.width, pageSize.height);
+          bitmap.close();
+        } catch {
+          // Keep the requested page size if the image cannot be measured.
+        }
       }
-    }))
+      return {
+        id: generateId('page'),
+        width,
+        height,
+        rotation: 0,
+        source: {
+          kind: 'image' as const,
+          bytes,
+          mime,
+          name: file.name,
+          fit
+        }
+      };
+    })
   );
 }
 

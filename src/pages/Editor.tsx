@@ -28,7 +28,7 @@ import { ProgressDialog } from '../ui/ProgressDialog';
 import { Toast } from '../ui/Toast';
 import { useIsDesktop } from '../ui/useMedia';
 
-type Sheet = 'text-menu' | 'text' | 'text-edit' | 'export' | null;
+type Sheet = 'text-menu' | 'text' | 'text-edit' | 'export' | 'leave' | null;
 
 export function Editor() {
   const session = usePdfSession();
@@ -107,12 +107,14 @@ export function Editor() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      const typing = isTypingTarget(event.target);
       if ((event.metaKey || event.ctrlKey) && event.key === 'z') {
+        if (typing) return;
         event.preventDefault();
         if (event.shiftKey) session.redo();
         else session.undo();
       }
-      if (event.key === 'Delete' || event.key === 'Backspace') {
+      if ((event.key === 'Delete' || event.key === 'Backspace') && !typing) {
         if (selectedAnnotationId) session.deleteAnnotation(selectedAnnotationId);
       }
       if (event.key === 'Escape' && pickingOriginal) {
@@ -234,12 +236,20 @@ export function Editor() {
     session.deleteCurrentPage();
   }
 
+  function onBack() {
+    if (session.canUndo || annotations.length) {
+      setSheet('leave');
+      return;
+    }
+    session.goHome();
+  }
+
   return (
     <div className="editor">
       <div className="topbar">
         <div className="topbar-main">
           <div className="topbar-left">
-            <button className="nav-btn" onClick={session.goHome}>
+            <button className="nav-btn" onClick={onBack}>
               <NavBackLabel>返回</NavBackLabel>
             </button>
             <div className="file-name">{fileName}</div>
@@ -526,13 +536,6 @@ export function Editor() {
             onChange={(event) => setTextValue(event.target.value)}
             placeholder="输入要加到这一页的文字"
             rows={4}
-            style={{
-              width: '100%',
-              border: '1px solid var(--border)',
-              borderRadius: 12,
-              padding: 12,
-              resize: 'vertical'
-            }}
           />
           <div className="footer-bar" style={{ border: 0, padding: '12px 0 0' }}>
             <button className="ghost-btn" style={{ margin: 0 }} onClick={() => setSheet(null)}>
@@ -543,7 +546,10 @@ export function Editor() {
               style={{ margin: 0 }}
               onClick={() => {
                 const value = textValue.trim();
-                if (!value) return;
+                if (!value) {
+                  showToast('请先输入文字');
+                  return;
+                }
                 session.addText(value);
                 setTextValue('');
                 setSheet(null);
@@ -564,13 +570,6 @@ export function Editor() {
             onChange={(event) => setTextValue(event.target.value)}
             placeholder="改这一行的文字"
             rows={3}
-            style={{
-              width: '100%',
-              border: '1px solid var(--border)',
-              borderRadius: 12,
-              padding: 12,
-              resize: 'vertical'
-            }}
           />
           <p className="sheet-note">会盖住原来的字再写上新的。扫描件改不了。</p>
           <div className="footer-bar" style={{ border: 0, padding: '12px 0 0' }}>
@@ -668,10 +667,39 @@ export function Editor() {
         </div>
       )}
 
+      {sheet === 'leave' && (
+        <div className="sheet">
+          <div className="sheet-grabber" />
+          <h3>返回首页</h3>
+          <p className="sheet-note">返回后，这次还没导出的修改会丢掉。</p>
+          <div className="footer-bar" style={{ border: 0, padding: '12px 0 0' }}>
+            <button className="ghost-btn" style={{ margin: 0 }} onClick={() => setSheet(null)}>
+              留下
+            </button>
+            <button
+              className="primary-btn"
+              style={{ margin: 0 }}
+              onClick={() => {
+                setSheet(null);
+                session.goHome();
+              }}
+            >
+              返回
+            </button>
+          </div>
+        </div>
+      )}
+
       {job && <ProgressDialog title={job.title} done={job.done} total={job.total} />}
       <Toast message={toast} />
     </div>
   );
+}
+
+function isTypingTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
 }
 
 function TextHitLayer({
@@ -823,8 +851,8 @@ function AnnotationLayer({
                   onPointerDown={(event) => onPointerDown(event, item, 'resize')}
                 />
                 <button
-                  className="icon-btn"
-                  style={{ position: 'absolute', top: -28, right: -8, color: '#ef4444' }}
+                  type="button"
+                  className="ann-delete"
                   onClick={(event) => {
                     event.stopPropagation();
                     onDelete(item.id);

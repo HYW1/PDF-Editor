@@ -157,7 +157,7 @@ export function PdfSessionProvider({ children }: { children: ReactNode }) {
     if (!files.length) return;
     let nextPages: PageInfo[] = [];
     try {
-      nextPages = await makeImagePages(files, A4, fit);
+      nextPages = await makeImagePages(files, A4, fit, true);
     } catch (error) {
       console.error(error);
       throw new Error('无法读取这些图片');

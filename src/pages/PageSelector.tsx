@@ -55,9 +55,9 @@ export function PageSelector() {
         ))}
       </div>
       <div className="footer-bar">
-        <div>
+        <div className="selector-actions">
           <div>已选 {count} 页</div>
-          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+          <div className="selector-position">
             <button
               className={position === 'before' ? 'primary-btn' : 'ghost-btn'}
               style={{ margin: 0, minHeight: 34, padding: '0 10px' }}
@@ -74,7 +74,7 @@ export function PageSelector() {
             </button>
           </div>
         </div>
-        <button className="primary-btn" style={{ margin: 0 }} onClick={insert} disabled={!count}>
+        <button className="primary-btn" style={{ margin: 0, flexShrink: 0 }} onClick={insert} disabled={!count}>
           插入
         </button>
       </div>

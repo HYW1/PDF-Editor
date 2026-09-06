@@ -1,7 +1,8 @@
-import { useEffect, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { pickFiles } from '../core/files';
 import { usePdfSession } from '../session/PdfSession';
 import { IconChevron, IconEdit, IconImage, IconMerge, IconPdfToImage, IconWeb } from '../ui/icons';
+import { ProgressDialog } from '../ui/ProgressDialog';
 import { Toast } from '../ui/Toast';
 
 function isPdf(file: File) {
@@ -18,6 +19,8 @@ export function Home() {
   const [toast, setToast] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [job, setJob] = useState<{ title: string; done: number; total: number } | null>(null);
+  const toastTimer = useRef(0);
 
   useEffect(() => {
     const warm = () => {
@@ -33,7 +36,8 @@ export function Home() {
 
   function showToast(message: string) {
     setToast(message);
-    window.setTimeout(() => setToast(null), 2200);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2200);
   }
 
   async function openPdfs(multiple: boolean) {
@@ -70,21 +74,24 @@ export function Home() {
       const files = await pickFiles('application/pdf', false);
       if (!files[0]) return;
       setBusy('正在导出图片…');
-      showToast('正在导出图片…');
+      setJob({ title: '正在导出图片', done: 0, total: 1 });
       const [{ loadPdfFile }, { renderPagesToPngs, downloadPageImages }] = await Promise.all([
         import('../core/pdf-engine'),
         import('../core/pdf-to-images')
       ]);
       const loaded = await loadPdfFile(files[0]);
+      setJob({ title: '正在导出图片', done: 0, total: loaded.pages.length });
       const images = await renderPagesToPngs(
         loaded.pages,
         { [loaded.doc.id]: loaded.doc },
         [],
-        (done, total) => showToast(`导出图片 ${done}/${total}`)
+        (done, total) => setJob({ title: '正在导出图片', done, total })
       );
       downloadPageImages(images, files[0].name);
+      setJob(null);
       showToast(images.length === 1 ? '已导出图片' : `已导出 ${images.length} 张图片`);
     } catch (error) {
+      setJob(null);
       showToast(error instanceof Error ? error.message : '导出图片失败');
     } finally {
       setBusy(null);
@@ -219,11 +226,12 @@ export function Home() {
 
         <p className="home-foot">功能都免费。文件不上传，改完再导出。</p>
       </div>
-      {busy && (
+      {busy && !job && (
         <div className="home-busy" role="status" aria-live="polite">
           <div className="home-busy-card">{busy}</div>
         </div>
       )}
+      {job && <ProgressDialog title={job.title} done={job.done} total={job.total} />}
       <Toast message={toast} />
     </div>
   );

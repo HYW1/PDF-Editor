@@ -8,24 +8,37 @@ export function Signature() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const drawing = useRef(false);
   const last = useRef({ x: 0, y: 0 });
+  const drawnRef = useRef(false);
   const [hasDrawn, setHasDrawn] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
     if (!canvas || !wrap) return;
-    const resize = () => {
-      const rect = wrap.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+    const paintStyle = (ctx: CanvasRenderingContext2D, dpr: number) => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.lineWidth = 2.6;
       ctx.strokeStyle = '#111';
+    };
+    const resize = () => {
+      const rect = wrap.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const snapshot = drawnRef.current ? canvas.toDataURL() : '';
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      paintStyle(ctx, dpr);
+      if (!snapshot) return;
+      const image = new Image();
+      image.onload = () => {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        paintStyle(ctx, dpr);
+      };
+      image.src = snapshot;
     };
     resize();
     window.addEventListener('resize', resize);
@@ -41,6 +54,7 @@ export function Signature() {
     event.currentTarget.setPointerCapture(event.pointerId);
     drawing.current = true;
     last.current = point(event);
+    drawnRef.current = true;
     setHasDrawn(true);
   }
 
@@ -64,7 +78,15 @@ export function Signature() {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 2.6;
+    ctx.strokeStyle = '#111';
+    drawnRef.current = false;
     setHasDrawn(false);
   }
 

@@ -292,9 +292,20 @@ console.log('added blank page');
 
 await page.getByRole('button', { name: '文字' }).click();
 await page.getByRole('button', { name: '添加新文字' }).click();
+await page.getByRole('button', { name: '添加到页面' }).click();
+await page.getByText('请先输入文字').waitFor();
 await page.getByPlaceholder('输入要加到这一页的文字').fill('本地导出测试');
 await page.getByRole('button', { name: '添加到页面' }).click();
 await page.getByText('本地导出测试').waitFor();
+await page.getByRole('button', { name: '文字' }).click();
+await page.getByRole('button', { name: '添加新文字' }).click();
+const box = page.getByPlaceholder('输入要加到这一页的文字');
+await box.fill('临时');
+await box.press('Backspace');
+if (!(await page.getByText('本地导出测试').count())) {
+  throw new Error('typing backspace should not delete the selected annotation');
+}
+await page.locator('.sheet').getByRole('button', { name: '取消' }).click();
 console.log('added text');
 
 await page.getByRole('button', { name: '导出' }).click();
@@ -341,8 +352,17 @@ console.log('compressed', compressed.suggestedFilename(), 'pages', compressedPdf
 });
 
 await page.screenshot({ path: `${outDir}/editor_after_edits.png` });
-await page.getByRole('button', { name: '返回', exact: true }).click();
+if (!(await page.locator('.ann-delete').count())) {
+  throw new Error('selected text should show a delete chip');
+}
+await page.locator('.topbar .nav-btn').click();
+await page.getByText('返回后，这次还没导出的修改会丢掉。').waitFor();
+await page.locator('.sheet').getByRole('button', { name: '留下' }).click();
+await page.getByText('1 / 3').waitFor();
+await page.locator('.topbar .nav-btn').click();
+await page.locator('.sheet').getByRole('button', { name: '返回', exact: true }).click();
 await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
+console.log('leave confirm ok');
 
 const [mergeChooser] = await Promise.all([
   page.waitForEvent('filechooser'),
@@ -389,6 +409,8 @@ const [pdfChooser] = await Promise.all([
   page.getByRole('button', { name: 'PDF 转图片' }).click()
 ]);
 await pdfChooser.setFiles('public/sample.pdf');
+await page.getByText('正在导出图片').waitFor({ timeout: 8000 });
+await page.locator('.progress-card').screenshot({ path: `${outDir}/pdf_to_images_progress.png` });
 const imageZip = await imageDownload;
 const imageZipPath = `${outDir}/sample_pages.zip`;
 await imageZip.saveAs(imageZipPath);
@@ -464,6 +486,27 @@ await mobile.getByText('1 / 4').waitFor({ timeout: 15000 });
 await assertExportFits(mobile, 'mobile editor', 390);
 await assertPreviewFlush(mobile, 'mobile landscape preview');
 await mobile.screenshot({ path: `${outDir}/editor_mobile_landscape.png` });
+await mobile.getByRole('button', { name: '签名' }).click();
+await mobile.getByText('手写签名').waitFor();
+const confirm = await mobile.getByRole('button', { name: '确认' }).boundingBox();
+if (!confirm || confirm.x + confirm.width > 391) {
+  throw new Error(`mobile confirm clipped: ${JSON.stringify(confirm)}`);
+}
+await mobile.screenshot({ path: `${outDir}/signature_mobile.png` });
+await mobile.getByRole('button', { name: '取消' }).click();
+await mobile.getByText('1 / 4').waitFor();
+await mobile.getByRole('button', { name: '添加' }).click();
+const [addPdf] = await Promise.all([
+  mobile.waitForEvent('filechooser'),
+  mobile.getByRole('button', { name: '添加 PDF' }).click()
+]);
+await addPdf.setFiles('public/sample.pdf');
+await mobile.getByRole('button', { name: '全选' }).waitFor({ timeout: 15000 });
+const selectAll = await mobile.getByRole('button', { name: '全选' }).boundingBox();
+if (!selectAll || selectAll.x + selectAll.width > 391) {
+  throw new Error(`mobile select-all clipped: ${JSON.stringify(selectAll)}`);
+}
+await mobile.screenshot({ path: `${outDir}/page_selector_mobile.png` });
 console.log('mobile editor layout ok');
 
 await browser.close();
