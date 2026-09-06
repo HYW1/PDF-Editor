@@ -358,6 +358,7 @@ if (!(await page.locator('.ann-delete').count())) {
 await page.locator('.topbar .nav-btn').click();
 await page.getByText('返回后，这次还没导出的修改会丢掉。').waitFor();
 await page.locator('.sheet').getByRole('button', { name: '留下' }).click();
+await page.getByText('返回后，这次还没导出的修改会丢掉。').waitFor({ state: 'hidden' });
 await page.locator('.export-btn').waitFor();
 await page.locator('.topbar .nav-btn').click();
 await page.locator('.sheet').getByRole('button', { name: '返回', exact: true }).click();
@@ -498,7 +499,7 @@ await mobile.getByText('1 / 4').waitFor();
 await mobile.getByRole('button', { name: '添加' }).click();
 const [addPdf] = await Promise.all([
   mobile.waitForEvent('filechooser'),
-  mobile.getByRole('button', { name: '添加 PDF' }).click()
+  mobile.locator('label.tool', { hasText: 'PDF' }).click()
 ]);
 await addPdf.setFiles('public/sample.pdf');
 await mobile.getByRole('button', { name: '全选' }).waitFor({ timeout: 15000 });
