@@ -217,7 +217,8 @@ button {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(28px + var(--safe-bottom));
+  top: calc(58px + var(--safe-top));
+  bottom: auto;
   transform: translateX(-50%);
   background: rgba(17,17,17,0.92);
   color: #fff;
