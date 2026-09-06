@@ -215,7 +215,8 @@ header, .header, nav, .nav, .topbar, [class*="sticky"], [class*="fixed"] {
 .detailFixedHead, .detailFixedHeader,
 .leftFixedDetails, .rightFixedDetails,
 [class*="loginGuide"], [class*="unLoginWrap"], [class*="floatNav"],
-[class*="sideUnlogin"], [class*="loginStyle"] {
+[class*="sideUnlogin"], [class*="loginStyle"],
+[class*="captcha"], [class*="Captcha"], [id*="captcha"] {
   display: none !important;
 }
 * { animation: none !important; transition: none !important; }

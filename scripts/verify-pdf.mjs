@@ -218,6 +218,50 @@ assert(
 }
 
 {
+  const prevVercel = process.env.VERCEL;
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  delete process.env.VERCEL;
+  globalThis.fetch = async (url) => {
+    const href = String(url);
+    const html =
+      '<html><head><title>站酷</title></head><body><article>耍好手中的笔作品介绍</article></body></html>';
+    return {
+      ok: true,
+      url: href,
+      headers: { get: () => 'text/html' },
+      arrayBuffer: async () => Buffer.from(html)
+    };
+  };
+  const page = {
+    on() {},
+    async goto(nextUrl) {
+      calls.push(`goto:${String(nextUrl).slice(0, 40)}`);
+    },
+    async waitForSelector() {},
+    async setContent() {
+      calls.push('setContent');
+    },
+    async evaluate() {
+      return true;
+    }
+  };
+  try {
+    await openAnyPublicPage(page, 'https://www.zcool.com.cn/work/ZNzQwOTc5Njg=.html');
+    assert(calls.includes('setContent'), 'local convert should open the downloaded HTML first');
+    assert(
+      !calls.some((item) => item.startsWith('goto:https://www.zcool.com.cn')),
+      'should not open the live zcool page after a successful download'
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (prevVercel === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = prevVercel;
+  }
+  console.log('local fetch-first ok');
+}
+
+{
   const fake = Buffer.from(`%PDF-1.4\n${'x'.repeat(240)}`);
   const bytes = await printPageToPdf(
     {

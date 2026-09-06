@@ -158,21 +158,16 @@ export async function freezePageNetwork(page) {
 }
 
 export async function openAnyPublicPage(page, targetUrl, onProgress) {
-  if (process.env.VERCEL) {
-    try {
-      return await loadPageFromHtml(page, targetUrl, onProgress);
-    } catch (error) {
-      console.warn('fetch html failed, trying browser', error);
-    }
+  try {
+    return await loadPageFromHtml(page, targetUrl, onProgress);
+  } catch (error) {
+    console.warn('fetch html failed, trying browser', error);
   }
   try {
     await navigatePublicPage(page, targetUrl, onProgress);
     if (await pageHasUsableContent(page)) return { title: '', text: '' };
   } catch (error) {
     console.warn('goto failed', error);
-  }
-  if (!process.env.VERCEL) {
-    return await loadPageFromHtml(page, targetUrl, onProgress);
   }
   throw userFacing('打不开这个网页');
 }

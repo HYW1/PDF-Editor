@@ -50,11 +50,14 @@ async function hideSiteChromeOnPage(page) {
         '[class*="unLoginWrap"]',
         '[class*="floatNav"]',
         '[class*="sideUnlogin"]',
-        '[class*="loginStyle"]'
+        '[class*="loginStyle"]',
+        '[class*="captcha"]',
+        '[class*="Captcha"]',
+        '[id*="captcha"]'
       ].join(',')
     ).forEach(hide);
-    for (const el of document.querySelectorAll('aside, dialog, [class*="modal"], [class*="Modal"]')) {
-      if (/欢迎登录|去登录|登录站酷/.test(el.textContent || '')) hide(el);
+    for (const el of document.querySelectorAll('aside, dialog, [class*="modal"], [class*="Modal"], [class*="guide"]')) {
+      if (/欢迎登录|去登录|登录站酷|访问验证|按住滑块|拖动到最右边/.test(el.textContent || '')) hide(el);
     }
   });
 }
