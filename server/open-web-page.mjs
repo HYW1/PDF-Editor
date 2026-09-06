@@ -28,12 +28,13 @@ export function viewportForUrl(targetUrl) {
 export function headersForUrl(targetUrl) {
   const headers = {
     'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Upgrade-Insecure-Requests': '1',
+    'Cache-Control': 'no-cache'
   };
   try {
-    if (isWechatHost(new URL(targetUrl).hostname)) {
-      headers.Referer = 'https://mp.weixin.qq.com/';
-    }
+    const parsed = new URL(targetUrl);
+    headers.Referer = isWechatHost(parsed.hostname) ? 'https://mp.weixin.qq.com/' : `${parsed.origin}/`;
   } catch {
     /* ignore */
   }
@@ -113,7 +114,11 @@ export async function loadPageFromHtml(page, targetUrl, onProgress) {
     html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${finalUrl}">`);
   }
   onProgress?.(50, '正在打开网页');
-  await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  try {
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: process.env.VERCEL ? 8000 : 20000 });
+  } catch {
+    /* HTML is already in the page even if stylesheets or images hang. */
+  }
   onProgress?.(58, '网页已打开');
 }
 
@@ -184,29 +189,33 @@ export async function waitForPageContent(page, targetUrl) {
 }
 
 export async function inspectPageAccess(page) {
-  return page.evaluate(() => {
-    const text = (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 5000);
-    const href = location.href;
-    const title = document.title || '';
-    const loginUrl = /\/(login|signin|passport|accounts\/|account\/login)\b/i.test(href);
-    const loginForm = Boolean(document.querySelector('input[type=password]')) && /登录|sign in|log in/i.test(text);
-    const login = loginUrl || loginForm;
-    const captcha = /wappoc_appmsgcaptcha|请输入验证码|环境异常|完成验证|安全验证|unusual traffic/i.test(
-      `${href} ${text}`
-    );
-    const wechatBlocked =
-      /请在微信打开|该内容被投诉|此内容发送给朋友才可查看|由作者设置.*不能查看|违规无法查看|该内容已被发布者删除/.test(
-        text
+  try {
+    return await page.evaluate(() => {
+      const text = (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 5000);
+      const href = location.href;
+      const title = document.title || '';
+      const loginUrl = /\/(login|signin|passport|accounts\/|account\/login)\b/i.test(href);
+      const loginForm = Boolean(document.querySelector('input[type=password]')) && /登录|sign in|log in/i.test(text);
+      const login = loginUrl || loginForm;
+      const captcha = /wappoc_appmsgcaptcha|请输入验证码|环境异常|完成验证|安全验证|unusual traffic/i.test(
+        `${href} ${text}`
       );
-    return {
-      href,
-      title,
-      login,
-      captcha,
-      wechatBlocked,
-      empty: text.trim().length < 30 && (document.body?.innerHTML || '').length < 800
-    };
-  });
+      const wechatBlocked =
+        /请在微信打开|该内容被投诉|此内容发送给朋友才可查看|由作者设置.*不能查看|违规无法查看|该内容已被发布者删除/.test(
+          text
+        );
+      return {
+        href,
+        title,
+        login,
+        captcha,
+        wechatBlocked,
+        empty: text.trim().length < 30 && (document.body?.innerHTML || '').length < 800
+      };
+    });
+  } catch {
+    return { href: '', title: '', login: false, captcha: false, wechatBlocked: false, empty: false };
+  }
 }
 
 export function throwIfBlocked(info) {
@@ -223,15 +232,20 @@ export function throwIfBlocked(info) {
 
 export async function finishOpenPage(page, targetUrl, onProgress) {
   onProgress?.(68, '正在整理页面');
-  await waitForPageContent(page, targetUrl);
+  await waitForPageContent(page, targetUrl).catch(() => {});
   const info = await inspectPageAccess(page);
   throwIfBlocked(info);
-  await revealSiteContent(page);
-  await prepareWebPageForPdf(page);
+  await revealSiteContent(page).catch(() => {});
+  await prepareWebPageForPdf(page).catch(() => {});
   const again = await inspectPageAccess(page);
   throwIfBlocked(again);
-  if (again.empty) throw userFacing('页面是空的，可能被网站拦下了');
-  const size = await measureWebPageSize(page);
+  if (again.empty && !process.env.VERCEL) throw userFacing('页面是空的，可能被网站拦下了');
+  let size = { width: 1280, height: 900 };
+  try {
+    size = await measureWebPageSize(page);
+  } catch {
+    /* keep a printable default size */
+  }
   return {
     size,
     name: pdfNameFromTitle(again.title, new URL(targetUrl).hostname)

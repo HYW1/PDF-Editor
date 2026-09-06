@@ -1,5 +1,5 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
-import { isNoiseUrl } from '../server/open-web-page.mjs';
+import { headersForUrl, isNoiseUrl, openAnyPublicPage } from '../server/open-web-page.mjs';
 import { parsePageUrl } from '../server/parse-page-url.mjs';
 import { pdfOptionsForWebPage } from '../server/prepare-web-pdf.mjs';
 
@@ -137,3 +137,45 @@ const mergedCheck = await PDFDocument.load(mergedBytes);
 assert(mergedCheck.getPageCount() === 3, `merged page count ${mergedCheck.getPageCount()}, expected 3`);
 assert(mergedBytes.byteLength > 200, 'merged PDF should not be empty');
 console.log('merge pdf ok', { pages: mergedCheck.getPageCount(), bytes: mergedBytes.byteLength });
+
+assert(
+  headersForUrl('https://www.uisdc.com/2026-9-design-resources-vol2').Referer === 'https://www.uisdc.com/',
+  'public site fetch should send the site origin as referer'
+);
+
+{
+  const prevVercel = process.env.VERCEL;
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  process.env.VERCEL = '1';
+  globalThis.fetch = async () => ({
+    ok: true,
+    url: 'https://www.uisdc.com/2026-9-design-resources-vol2',
+    text: async () =>
+      '<html><head><title>优设</title></head><body><article>大家好，这是 9 月整理的第二波 AI 干货合集</article></body></html>'
+  });
+  const page = {
+    on() {},
+    async goto() {
+      calls.push('goto');
+      throw new Error('net::ERR_CONNECTION_RESET');
+    },
+    async waitForSelector() {},
+    async setContent() {
+      calls.push('setContent');
+    },
+    async evaluate() {
+      return true;
+    }
+  };
+  try {
+    await openAnyPublicPage(page, 'https://www.uisdc.com/2026-9-design-resources-vol2');
+    assert(calls.includes('setContent'), 'Vercel should open the downloaded HTML');
+    assert(!calls.includes('goto'), 'Vercel should not navigate again after a successful download');
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (prevVercel === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = prevVercel;
+  }
+  console.log('vercel fetch-keep ok');
+}
