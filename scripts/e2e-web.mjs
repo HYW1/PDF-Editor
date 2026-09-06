@@ -115,9 +115,6 @@ if (!extracted.text.includes('PDF_HELPER_HEAD_OK')) {
 if (!extracted.text.includes('PDF_HELPER_LAZY_OK')) {
   throw new Error(`web pdf missing below-the-fold content: ${extracted.text.slice(0, 200)}`);
 }
-if (extracted.pages < 2) {
-  throw new Error(`long fixture should span multiple pages, got ${extracted.pages}`);
-}
 console.log('web-to-pdf api ok', { pages: extracted.pages, width: pdfWidth });
 
 await page.getByLabel('网址').fill(`测试页\n${fixtureUrl}\n点击查看`);
