@@ -668,17 +668,16 @@ export function Editor() {
       )}
 
       {sheet === 'leave' && (
-        <div className="sheet">
-          <div className="sheet-grabber" />
-          <h3>返回首页</h3>
-          <p className="sheet-note">返回后，这次还没导出的修改会丢掉。</p>
-          <div className="footer-bar" style={{ border: 0, padding: '12px 0 0' }}>
-            <button className="ghost-btn" style={{ margin: 0 }} onClick={() => setSheet(null)}>
+        <div className="dialog" role="alertdialog" aria-labelledby="leave-title" aria-modal="true">
+          <h3 id="leave-title">返回首页</h3>
+          <p>返回后，这次还没导出的修改会丢掉。</p>
+          <div className="dialog-actions">
+            <button type="button" className="dialog-btn" onClick={() => setSheet(null)}>
               留下
             </button>
             <button
-              className="primary-btn"
-              style={{ margin: 0 }}
+              type="button"
+              className="dialog-btn dialog-btn-primary"
               onClick={() => {
                 setSheet(null);
                 session.goHome();
