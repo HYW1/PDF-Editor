@@ -1,7 +1,9 @@
 import { chromium } from 'playwright';
 import {
+  enableTrafficFilter,
   finishOpenPage,
   headersForUrl,
+  navigatePublicPage,
   stealthScript,
   userAgentForUrl,
   viewportForUrl
@@ -40,17 +42,10 @@ export async function renderUrlToPdf(targetUrl, onProgress) {
     extraHTTPHeaders: headersForUrl(targetUrl)
   });
   try {
-    let loaded = false;
-    page.on('load', () => {
-      loaded = true;
-      onProgress?.(58, '网页已打开');
-    });
-    onProgress?.(32, '正在打开网页');
     await page.addInitScript(stealthScript);
     await page.emulateMedia({ media: 'screen' });
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 40000 });
-    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
-    if (!loaded) onProgress?.(62, '网页已打开');
+    await enableTrafficFilter(page);
+    await navigatePublicPage(page, targetUrl, onProgress);
     const { size, name } = await finishOpenPage(page, targetUrl, onProgress);
     onProgress?.(86, '正在生成 PDF');
     const bytes = await page.pdf(pdfOptionsForWebPage(size));

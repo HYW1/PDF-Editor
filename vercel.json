@@ -8,7 +8,7 @@
   "functions": {
     "api/web-to-pdf.js": {
       "memory": 1024,
-      "maxDuration": 60,
+      "maxDuration": 120,
       "includeFiles": "node_modules/@sparticuz/chromium/**"
     }
   }

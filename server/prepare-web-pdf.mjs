@@ -31,7 +31,7 @@ export async function prepareWebPageForPdf(page) {
 
     try {
       if (document.fonts?.ready) {
-        await Promise.race([document.fonts.ready, wait(2500)]);
+        await Promise.race([document.fonts.ready, wait(800)]);
       }
     } catch {
       /* ignore font timeouts */
@@ -75,24 +75,24 @@ export async function prepareWebPageForPdf(page) {
 
     const limit = Math.min(
       Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0, 900),
-      20000
+      14000
     );
-    const step = Math.max(window.innerHeight * 0.8, 640);
+    const step = Math.max(window.innerHeight * 0.95, 800);
     for (let y = 0; y < limit; y += step) {
       window.scrollTo(0, y);
-      await wait(80);
+      await wait(40);
     }
     window.scrollTo(0, 0);
-    await wait(200);
+    await wait(120);
 
     await Promise.all(
-      [...document.images].map((img) => {
+      [...document.images].slice(0, 40).map((img) => {
         if (img.complete) return undefined;
         return new Promise((resolve) => {
           const done = () => resolve();
           img.addEventListener('load', done, { once: true });
           img.addEventListener('error', done, { once: true });
-          setTimeout(done, 2000);
+          setTimeout(done, 800);
         });
       })
     );

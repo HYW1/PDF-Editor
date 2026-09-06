@@ -1,4 +1,5 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
+import { isNoiseUrl } from '../server/open-web-page.mjs';
 import { parsePageUrl } from '../server/parse-page-url.mjs';
 import { pdfOptionsForWebPage } from '../server/prepare-web-pdf.mjs';
 
@@ -59,6 +60,9 @@ assert(
   parsePageUrl('weixin://dl/business/?ticket=1').error === '请用微信里「复制链接」得到的 https 网址',
   'reject weixin scheme'
 );
+assert(isNoiseUrl('https://www.google-analytics.com/g/collect'), 'block analytics');
+assert(isNoiseUrl('https://hm.baidu.com/hm.js?abc'), 'block baidu hm');
+assert(!isNoiseUrl('https://www.uisdc.com/wp-content/uploads/a.jpg'), 'keep site images');
 
 const webPdf = pdfOptionsForWebPage({ width: 1280, height: 2400 });
 assert(webPdf.width === '1280px', `web pdf width ${webPdf.width}`);

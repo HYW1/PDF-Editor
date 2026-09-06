@@ -40,6 +40,60 @@ export function headersForUrl(targetUrl) {
   return headers;
 }
 
+export function isNoiseUrl(url) {
+  return /google-analytics|googletagmanager|googleadservices|doubleclick|googlesyndication|pagead2|facebook\.net|connect\.facebook|hotjar|fullstory|clarity\.ms|baidu\.com\/hm|hm\.baidu|cnzz\.com|umeng|sensorsdata|adsystem|adservice|scorecardresearch|quantserve|ads-twitter|platform\.twitter|google.com\/recaptcha/i.test(
+    String(url || '')
+  );
+}
+
+export async function enableTrafficFilter(page) {
+  if (typeof page.route === 'function') {
+    await page.route('**/*', (route) => {
+      if (isNoiseUrl(route.request().url())) return route.abort();
+      return route.continue();
+    });
+    return;
+  }
+  await page.setRequestInterception(true);
+  page.on('request', (req) => {
+    if (isNoiseUrl(req.url())) req.abort().catch(() => {});
+    else req.continue().catch(() => {});
+  });
+}
+
+async function pageHasUsableContent(page) {
+  try {
+    return await page.evaluate(
+      () => Boolean(document.body && (document.body.innerText || '').replace(/\s+/g, '').length > 20)
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function navigatePublicPage(page, targetUrl, onProgress) {
+  onProgress?.(32, '正在打开网页');
+  let opened = false;
+  const markOpen = () => {
+    if (opened) return;
+    opened = true;
+    onProgress?.(58, '网页已打开');
+  };
+  page.on('domcontentloaded', markOpen);
+  page.on('load', markOpen);
+
+  try {
+    await page.goto(targetUrl, { waitUntil: 'commit', timeout: 18000 });
+    await page.waitForSelector('body', { timeout: 10000 }).catch(() => {});
+    markOpen();
+  } catch (error) {
+    if (!(await pageHasUsableContent(page))) throw error;
+    markOpen();
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 400));
+}
+
 export function stealthScript() {
   Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
   window.chrome = window.chrome || { runtime: {} };
@@ -75,7 +129,7 @@ export async function waitForPageContent(page, targetUrl) {
     : ['article', 'main', '#content', '#root', '#app', 'body'];
   for (const selector of selectors) {
     try {
-      await page.waitForSelector(selector, { timeout: wechat ? 12000 : 6000 });
+      await page.waitForSelector(selector, { timeout: wechat ? 8000 : 2500 });
       break;
     } catch {
       /* try next */
