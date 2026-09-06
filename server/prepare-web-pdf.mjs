@@ -232,7 +232,68 @@ export function articleFallbackHtml(title, text) {
 <body><h1>${safeTitle}</h1><p>${safeText}</p></body></html>`;
 }
 
-export async function printOpenedPage(page, opened, onProgress, openFallbackPage) {
+export async function textToPdfBytes(title, text) {
+  const { PDFDocument, rgb } = await import('pdf-lib');
+  const fontkit = (await import('@pdf-lib/fontkit')).default;
+  const { loadCjkFontBytes } = await import('./cjk-font.mjs');
+  const fontBytes = await loadCjkFontBytes();
+  const doc = await PDFDocument.create();
+  doc.registerFontkit(fontkit);
+  const font = await doc.embedFont(fontBytes, { subset: true });
+  const pageWidth = 595;
+  const pageHeight = 842;
+  const margin = 48;
+  const titleSize = 18;
+  const bodySize = 12;
+  const lineHeight = 18;
+  const maxWidth = pageWidth - margin * 2;
+  const wrap = (value, size) => {
+    const lines = [];
+    for (const paragraph of String(value || '').split('\n')) {
+      let current = '';
+      for (const char of paragraph) {
+        const next = current + char;
+        if (current && font.widthOfTextAtSize(next, size) > maxWidth) {
+          lines.push(current);
+          current = char;
+        } else {
+          current = next;
+        }
+      }
+      lines.push(current);
+    }
+    return lines;
+  };
+  let page = doc.addPage([pageWidth, pageHeight]);
+  let y = pageHeight - margin;
+  const drawLines = (lines, size) => {
+    for (const line of lines) {
+      if (y < margin + lineHeight) {
+        page = doc.addPage([pageWidth, pageHeight]);
+        y = pageHeight - margin;
+      }
+      if (line) {
+        page.drawText(line, { x: margin, y, size, font, color: rgb(0.1, 0.1, 0.1) });
+      }
+      y -= lineHeight;
+    }
+  };
+  drawLines(wrap(title || '网页', titleSize), titleSize);
+  y -= 10;
+  drawLines(wrap(text, bodySize), bodySize);
+  return Buffer.from(await doc.save({ useObjectStreams: true }));
+}
+
+export async function printOpenedPage(page, opened, onProgress) {
+  const compact = String(opened.text || '').replace(/\s+/g, '');
+  if (process.env.VERCEL && compact.length >= 40) {
+    onProgress?.(86, '正在生成 PDF');
+    const bytes = await textToPdfBytes(opened.title || opened.name, opened.text);
+    if (bytes.byteLength > 200) {
+      onProgress?.(96, '即将完成');
+      return { bytes, name: opened.name };
+    }
+  }
   onProgress?.(86, '正在生成 PDF');
   try {
     const bytes = await printPageToPdf(page, opened.size);
@@ -240,20 +301,10 @@ export async function printOpenedPage(page, opened, onProgress, openFallbackPage
     return { bytes, name: opened.name };
   } catch (error) {
     console.warn('visual print failed', error);
-    const compact = String(opened.text || '').replace(/\s+/g, '');
-    if (compact.length < 20 || typeof openFallbackPage !== 'function') throw error;
+    if (compact.length < 20) throw error;
     onProgress?.(88, '正在保存文字内容');
-    const fallback = await openFallbackPage();
-    try {
-      await fallback.setContent(articleFallbackHtml(opened.title || opened.name, opened.text), {
-        waitUntil: 'domcontentloaded',
-        timeout: 8000
-      });
-      const bytes = await printPageToPdf(fallback, { width: 800, height: 1131 });
-      onProgress?.(96, '即将完成');
-      return { bytes, name: opened.name };
-    } finally {
-      await fallback.close().catch(() => {});
-    }
+    const bytes = await textToPdfBytes(opened.title || opened.name, opened.text);
+    onProgress?.(96, '即将完成');
+    return { bytes, name: opened.name };
   }
 }

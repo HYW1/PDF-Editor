@@ -108,6 +108,7 @@ export async function loadPageFromHtml(page, targetUrl, onProgress) {
   if (!res.ok) throw userFacing('网站拒绝打开这个页面');
   let html = await res.text();
   if (!html || html.length < 80) throw userFacing('网页没有内容');
+  const extracted = textFromHtml(html);
   const finalUrl = res.url || targetUrl;
   html = html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -133,6 +134,33 @@ export async function loadPageFromHtml(page, targetUrl, onProgress) {
     /* HTML is already in the page even if stylesheets or images hang. */
   }
   onProgress?.(58, '网页已打开');
+  return extracted;
+}
+
+export function textFromHtml(html) {
+  const rawTitle = (String(html).match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '';
+  const text = decodeHtml(
+    String(html)
+      .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, ' ')
+      .replace(/<[^>]+>/g, '\n')
+  )
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return { title: decodeHtml(rawTitle).replace(/\s+/g, ' ').trim(), text };
+}
+
+function decodeHtml(value) {
+  return String(value || '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
 }
 
 export async function freezePageNetwork(page) {
@@ -157,21 +185,19 @@ export async function freezePageNetwork(page) {
 export async function openAnyPublicPage(page, targetUrl, onProgress) {
   if (process.env.VERCEL) {
     try {
-      await loadPageFromHtml(page, targetUrl, onProgress);
-      return;
+      return await loadPageFromHtml(page, targetUrl, onProgress);
     } catch (error) {
       console.warn('fetch html failed, trying browser', error);
     }
   }
   try {
     await navigatePublicPage(page, targetUrl, onProgress);
-    if (await pageHasUsableContent(page)) return;
+    if (await pageHasUsableContent(page)) return { title: '', text: '' };
   } catch (error) {
     console.warn('goto failed', error);
   }
   if (!process.env.VERCEL) {
-    await loadPageFromHtml(page, targetUrl, onProgress);
-    return;
+    return await loadPageFromHtml(page, targetUrl, onProgress);
   }
   throw userFacing('打不开这个网页');
 }
@@ -276,7 +302,7 @@ export async function snapshotPageText(page) {
   }
 }
 
-export async function finishOpenPage(page, targetUrl, onProgress) {
+export async function finishOpenPage(page, targetUrl, onProgress, extracted = {}) {
   onProgress?.(68, '正在整理页面');
   await waitForPageContent(page, targetUrl).catch(() => {});
   const info = await inspectPageAccess(page);
@@ -295,11 +321,12 @@ export async function finishOpenPage(page, targetUrl, onProgress) {
   } catch {
     /* keep a printable default size */
   }
-  const title = again.title || snap.title;
+  const title = again.title || snap.title || extracted.title || '';
+  const text = (snap.text || '').length >= (extracted.text || '').length ? snap.text : extracted.text;
   return {
     size,
     title,
-    text: snap.text,
+    text: text || extracted.text || '',
     name: pdfNameFromTitle(title, new URL(targetUrl).hostname)
   };
 }

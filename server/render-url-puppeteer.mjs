@@ -1,5 +1,6 @@
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
+import { loadCjkFontBytes } from './cjk-font.mjs';
 import {
   finishOpenPage,
   headersForUrl,
@@ -14,31 +15,6 @@ chromium.setGraphicsMode = false;
 
 let browserPromise = null;
 
-async function ensureCjkFont() {
-  const dest = '/tmp/fonts/NotoSansSC-Regular.otf';
-  try {
-    const { access, mkdir, writeFile } = await import('node:fs/promises');
-    await mkdir('/tmp/fonts', { recursive: true });
-    try {
-      await access(dest);
-      return;
-    } catch {
-      /* download below */
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(
-      'https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf',
-      { signal: controller.signal }
-    );
-    clearTimeout(timer);
-    if (!res.ok) return;
-    await writeFile(dest, Buffer.from(await res.arrayBuffer()));
-  } catch (error) {
-    console.warn('cjk font skipped', error);
-  }
-}
-
 async function getBrowser() {
   if (browserPromise) {
     try {
@@ -49,7 +25,7 @@ async function getBrowser() {
     }
   }
   browserPromise = (async () => {
-    await ensureCjkFont();
+    await loadCjkFontBytes().catch((error) => console.warn('cjk font skipped', error));
     const args = await puppeteer.defaultArgs({
       args: [...chromium.args, '--disable-blink-features=AutomationControlled'],
       headless: 'shell'
@@ -75,8 +51,8 @@ export async function renderUrlToPdf(targetUrl, onProgress) {
     await page.setExtraHTTPHeaders(headersForUrl(targetUrl));
     await page.evaluateOnNewDocument(stealthScript);
     await page.emulateMediaType('screen');
-    await openAnyPublicPage(page, targetUrl, onProgress);
-    const opened = await finishOpenPage(page, targetUrl, onProgress);
+    const extracted = (await openAnyPublicPage(page, targetUrl, onProgress)) || {};
+    const opened = await finishOpenPage(page, targetUrl, onProgress, extracted);
     return await printOpenedPage(page, opened, onProgress, async () => {
       try {
         return await browser.newPage();

@@ -1,12 +1,13 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
-import { headersForUrl, isNoiseUrl, openAnyPublicPage } from '../server/open-web-page.mjs';
+import { headersForUrl, isNoiseUrl, openAnyPublicPage, textFromHtml } from '../server/open-web-page.mjs';
 import { parsePageUrl } from '../server/parse-page-url.mjs';
 import {
   articleFallbackHtml,
   fallbackPdfOptions,
   pdfOptionsForWebPage,
   printOpenedPage,
-  printPageToPdf
+  printPageToPdf,
+  textToPdfBytes
 } from '../server/prepare-web-pdf.mjs';
 
 function fitImage(imageW, imageH, pageW, pageH, mode) {
@@ -226,40 +227,38 @@ assert(
 }
 
 {
-  const html = articleFallbackHtml('优设合集', '大家好，这是 9 月整理的第二波 AI 干货合集');
-  assert(html.includes('大家好，这是 9 月整理的第二波'), 'fallback html keeps article text');
-  const fake = Buffer.from(`%PDF-1.4\n${'y'.repeat(240)}`);
-  let usedFallback = false;
-  const result = await printOpenedPage(
-    {
-      async evaluate() {},
-      async pdf() {
-        throw new Error('Protocol error (Page.printToPDF): Session closed. Most likely the page');
-      }
-    },
-    { size: { width: 900, height: 1200 }, name: '优设合集.pdf', title: '优设合集', text: '大家好，这是 9 月整理的第二波 AI 干货合集。这一期整理了多个 Skill。' },
-    () => {},
-    async () => {
-      usedFallback = true;
-      return {
-        async setContent() {},
-        async evaluate() {},
-        async createCDPSession() {
-          return {
-            async send() {
-              return { data: fake.toString('base64') };
-            },
-            async detach() {}
-          };
-        },
-        async pdf() {
-          throw new Error('should use cdp');
-        },
-        async close() {}
-      };
-    }
+  const extracted = textFromHtml(
+    '<html><head><title>第二波！2026年9月精选实用 AI 和设计干货合集 - 优设网</title></head><body><article><p>大家好，这是 9 月整理的第二波 AI 干货合集</p></article></body></html>'
   );
-  assert(usedFallback, 'closed page should fall back to saved text');
-  assert(result.bytes.byteLength === fake.byteLength, 'fallback pdf bytes');
-  console.log('text fallback print ok');
+  assert(extracted.title.includes('优设网'), 'html title');
+  assert(extracted.text.includes('大家好，这是 9 月整理的第二波'), 'html article text');
+  const html = articleFallbackHtml('优设合集', extracted.text);
+  assert(html.includes('大家好，这是 9 月整理的第二波'), 'fallback html keeps article text');
+  const bytes = await textToPdfBytes(extracted.title, `${extracted.text}\n这一期整理了 6 个相对比较全的 Skill 合集。`);
+  assert(bytes.byteLength > 200, 'text pdf should not be empty');
+  assert(bytes.subarray(0, 4).toString() === '%PDF', 'text pdf header');
+  const prev = process.env.VERCEL;
+  process.env.VERCEL = '1';
+  try {
+    const result = await printOpenedPage(
+      {
+        async evaluate() {},
+        async pdf() {
+          throw new Error('should not print visually on Vercel when text exists');
+        }
+      },
+      {
+        size: { width: 900, height: 1200 },
+        name: '优设合集.pdf',
+        title: extracted.title,
+        text: `${extracted.text}\n这一期整理了 6 个相对比较全的 Skill 合集。`
+      },
+      () => {}
+    );
+    assert(result.bytes.byteLength > 200, 'vercel text pdf');
+  } finally {
+    if (prev === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = prev;
+  }
+  console.log('text fallback print ok', { bytes: bytes.byteLength });
 }

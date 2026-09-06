@@ -43,8 +43,8 @@ export async function renderUrlToPdf(targetUrl, onProgress) {
   try {
     await page.addInitScript(stealthScript);
     await page.emulateMedia({ media: 'screen' });
-    await openAnyPublicPage(page, targetUrl, onProgress);
-    const opened = await finishOpenPage(page, targetUrl, onProgress);
+    const extracted = (await openAnyPublicPage(page, targetUrl, onProgress)) || {};
+    const opened = await finishOpenPage(page, targetUrl, onProgress, extracted);
     return await printOpenedPage(page, opened, onProgress, () => browser.newPage());
   } finally {
     await page.close().catch(() => {});
