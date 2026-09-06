@@ -17,7 +17,7 @@ export function FilePick({ accept, multiple, className, label, children, onFiles
   }
 
   return (
-    <label className={className}>
+    <label className={className} aria-label={label}>
       <input
         type="file"
         accept={accept}
