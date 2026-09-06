@@ -23,7 +23,8 @@ export function FilePick({ accept, multiple, className, label, children, onFiles
         accept={accept}
         multiple={multiple}
         className="file-pick-input"
-        aria-label={label}
+        aria-hidden="true"
+        tabIndex={-1}
         onChange={onChange}
       />
       {children}

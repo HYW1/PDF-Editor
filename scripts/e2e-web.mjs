@@ -177,7 +177,7 @@ await page.getByRole('button', { name: '添加' }).click();
 await page.getByText('PDF', { exact: true }).waitFor();
 const [addChooser] = await Promise.all([
   page.waitForEvent('filechooser'),
-  page.getByLabel('添加 PDF').click()
+  page.locator('label.tool', { hasText: 'PDF' }).click()
 ]);
 await addChooser.setFiles('public/sample.pdf');
 await page.getByRole('button', { name: '全选' }).waitFor({ timeout: 15000 });
