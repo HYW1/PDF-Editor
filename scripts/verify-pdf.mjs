@@ -68,6 +68,8 @@ const webPdf = pdfOptionsForWebPage({ width: 1280, height: 2400 });
 assert(webPdf.width === '1100px', `web pdf width ${webPdf.width}`);
 assert(webPdf.height === '1556px', `web pdf height ${webPdf.height}`);
 assert(webPdf.preferCSSPageSize === false, 'web pdf should ignore print page size');
+assert(webPdf.waitForFonts === false, 'pdf should not wait for remote fonts');
+assert(webPdf.tagged === false, 'pdf should not require tagged output');
 assert(fallbackPdfOptions().format === 'A4', 'fallback pdf should use A4');
 {
   const prev = process.env.VERCEL;

@@ -121,7 +121,9 @@ export function pdfOptionsForWebPage(size = {}) {
     printBackground: true,
     preferCSSPageSize: false,
     scale: compact ? 0.58 : 0.72,
-    timeout: 45000,
+    waitForFonts: false,
+    tagged: false,
+    outline: false,
     margin: { top: '0', right: '0', bottom: '0', left: '0' }
   };
 }
@@ -132,7 +134,9 @@ export function fallbackPdfOptions() {
     printBackground: true,
     preferCSSPageSize: false,
     scale: 0.68,
-    timeout: 45000,
+    waitForFonts: false,
+    tagged: false,
+    outline: false,
     margin: { top: '10px', right: '10px', bottom: '10px', left: '10px' }
   };
 }
@@ -164,5 +168,9 @@ export async function printPageToPdf(page, size) {
       console.warn('page.pdf failed', error);
     }
   }
-  throw lastError || new Error('empty pdf');
+  const detail = String(lastError?.message || lastError || 'empty pdf').replace(/\s+/g, ' ').slice(0, 70);
+  const error = new Error(`网页打开了，但生成失败`);
+  error.expose = true;
+  console.error('printPageToPdf', detail);
+  throw error;
 }
