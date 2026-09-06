@@ -112,14 +112,57 @@ export async function measureWebPageSize(page) {
 }
 
 export function pdfOptionsForWebPage(size = {}) {
-  const width = Math.min(Math.max(Math.round(size.width || 1280), 390), 1100);
+  const compact = Boolean(process.env.VERCEL);
+  const width = Math.min(Math.max(Math.round(size.width || 1280), 390), compact ? 900 : 1100);
   const pageHeight = Math.round((width * 297) / 210);
   return {
     width: `${width}px`,
     height: `${pageHeight}px`,
     printBackground: true,
     preferCSSPageSize: false,
-    scale: 0.72,
+    scale: compact ? 0.58 : 0.72,
+    timeout: 45000,
     margin: { top: '0', right: '0', bottom: '0', left: '0' }
   };
+}
+
+export function fallbackPdfOptions() {
+  return {
+    format: 'A4',
+    printBackground: true,
+    preferCSSPageSize: false,
+    scale: 0.68,
+    timeout: 45000,
+    margin: { top: '10px', right: '10px', bottom: '10px', left: '10px' }
+  };
+}
+
+export async function printPageToPdf(page, size) {
+  try {
+    await page.evaluate((compact) => {
+      try {
+        window.stop();
+      } catch {
+        /* ignore */
+      }
+      if (compact) {
+        [...document.images].slice(16).forEach((img) => img.remove());
+      }
+    }, Boolean(process.env.VERCEL));
+  } catch {
+    /* page may already be idle */
+  }
+  const attempts = [pdfOptionsForWebPage(size), fallbackPdfOptions()];
+  let lastError;
+  for (const options of attempts) {
+    try {
+      const bytes = await page.pdf(options);
+      if (bytes && bytes.byteLength > 200) return bytes;
+      lastError = new Error('empty pdf');
+    } catch (error) {
+      lastError = error;
+      console.warn('page.pdf failed', error);
+    }
+  }
+  throw lastError || new Error('empty pdf');
 }

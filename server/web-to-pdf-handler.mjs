@@ -32,6 +32,9 @@ function publicError(error) {
   const message = String(error?.message || error);
   if (error?.expose || /[\u4e00-\u9fff]/.test(message)) return message.slice(0, 80);
   if (/timeout|timed out/i.test(message)) return '打开网页超时';
+  if (/print|PrintToPDF|empty pdf|Target closed|Session closed|crashed/i.test(message)) {
+    return '网页打开了，但生成失败，请再试一次';
+  }
   return '打不开这个网页';
 }
 

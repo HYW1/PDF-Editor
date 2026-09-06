@@ -109,11 +109,23 @@ export async function loadPageFromHtml(page, targetUrl, onProgress) {
   let html = await res.text();
   if (!html || html.length < 80) throw userFacing('网页没有内容');
   const finalUrl = res.url || targetUrl;
-  html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  html = html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<(iframe|video|audio|object|embed)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
+    .replace(/<(iframe|video|audio|object|embed)[^>]*\/?>/gi, '');
+  const safeBase = finalUrl.replace(/"/g, '&quot;');
   if (!/<base\s/i.test(html)) {
-    html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${finalUrl}">`);
+    html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${safeBase}">`);
   }
   onProgress?.(50, '正在打开网页');
+  const bootstrap = `data:text/html;charset=utf-8,${encodeURIComponent(
+    `<!doctype html><html><head><meta charset="utf-8"><base href="${safeBase}"></head><body></body></html>`
+  )}`;
+  try {
+    await page.goto(bootstrap, { waitUntil: 'domcontentloaded', timeout: 4000 });
+  } catch {
+    /* setContent still works even if this bootstrap navigation is skipped */
+  }
   try {
     await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: process.env.VERCEL ? 8000 : 20000 });
   } catch {

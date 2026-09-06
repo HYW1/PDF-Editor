@@ -8,7 +8,7 @@ import {
   userAgentForUrl,
   viewportForUrl
 } from './open-web-page.mjs';
-import { pdfOptionsForWebPage } from './prepare-web-pdf.mjs';
+import { printPageToPdf } from './prepare-web-pdf.mjs';
 
 chromium.setGraphicsMode = false;
 
@@ -78,9 +78,14 @@ export async function renderUrlToPdf(targetUrl, onProgress) {
     await openAnyPublicPage(page, targetUrl, onProgress);
     const { size, name } = await finishOpenPage(page, targetUrl, onProgress);
     onProgress?.(86, '正在生成 PDF');
-    const bytes = await page.pdf(pdfOptionsForWebPage(size));
+    const bytes = await printPageToPdf(page, size);
     onProgress?.(96, '即将完成');
     return { bytes, name };
+  } catch (error) {
+    if (/Target closed|Session closed|detached|crashed/i.test(String(error?.message || error))) {
+      browserPromise = null;
+    }
+    throw error;
   } finally {
     await page.close().catch(() => {});
   }

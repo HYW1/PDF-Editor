@@ -1,7 +1,7 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
 import { headersForUrl, isNoiseUrl, openAnyPublicPage } from '../server/open-web-page.mjs';
 import { parsePageUrl } from '../server/parse-page-url.mjs';
-import { pdfOptionsForWebPage } from '../server/prepare-web-pdf.mjs';
+import { fallbackPdfOptions, pdfOptionsForWebPage } from '../server/prepare-web-pdf.mjs';
 
 function fitImage(imageW, imageH, pageW, pageH, mode) {
   if (mode === 'original') {
@@ -68,6 +68,16 @@ const webPdf = pdfOptionsForWebPage({ width: 1280, height: 2400 });
 assert(webPdf.width === '1100px', `web pdf width ${webPdf.width}`);
 assert(webPdf.height === '1556px', `web pdf height ${webPdf.height}`);
 assert(webPdf.preferCSSPageSize === false, 'web pdf should ignore print page size');
+assert(fallbackPdfOptions().format === 'A4', 'fallback pdf should use A4');
+{
+  const prev = process.env.VERCEL;
+  process.env.VERCEL = '1';
+  const compact = pdfOptionsForWebPage({ width: 1280, height: 2400 });
+  if (prev === undefined) delete process.env.VERCEL;
+  else process.env.VERCEL = prev;
+  assert(compact.width === '900px', `vercel pdf width ${compact.width}`);
+  assert(compact.scale === 0.58, `vercel pdf scale ${compact.scale}`);
+}
 console.log('web pdf options ok');
 
 const { groupTextItems } = await import('../src/core/group-text-items.js');
@@ -156,9 +166,8 @@ assert(
   });
   const page = {
     on() {},
-    async goto() {
-      calls.push('goto');
-      throw new Error('net::ERR_CONNECTION_RESET');
+    async goto(nextUrl) {
+      calls.push(`goto:${String(nextUrl).slice(0, 32)}`);
     },
     async waitForSelector() {},
     async setContent() {
@@ -171,7 +180,10 @@ assert(
   try {
     await openAnyPublicPage(page, 'https://www.uisdc.com/2026-9-design-resources-vol2');
     assert(calls.includes('setContent'), 'Vercel should open the downloaded HTML');
-    assert(!calls.includes('goto'), 'Vercel should not navigate again after a successful download');
+    assert(
+      !calls.some((item) => item.startsWith('goto:https://www.uisdc.com')),
+      'Vercel should not open the live site after a successful download'
+    );
   } finally {
     globalThis.fetch = originalFetch;
     if (prevVercel === undefined) delete process.env.VERCEL;
