@@ -797,6 +797,9 @@ label.tool {
   border: 1.5px dashed transparent;
   cursor: move;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .ann.selected { border-color: var(--primary); }
 .ann.replace {

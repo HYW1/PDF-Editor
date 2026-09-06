@@ -352,9 +352,19 @@ console.log('compressed', compressed.suggestedFilename(), 'pages', compressedPdf
 });
 
 await page.screenshot({ path: `${outDir}/editor_after_edits.png` });
-if (!(await page.locator('.ann-delete').count())) {
-  throw new Error('selected text should show a delete chip');
+if (await page.locator('.ann-delete').count()) {
+  throw new Error('delete should stay hidden until long press');
 }
+const addedText = page.locator('.ann').filter({ hasText: '本地导出测试' });
+const textBox = await addedText.boundingBox();
+if (!textBox) throw new Error('added text missing');
+await page.mouse.move(textBox.x + textBox.width / 2, textBox.y + textBox.height / 2);
+await page.mouse.down();
+await page.waitForTimeout(560);
+await page.locator('.ann-delete').waitFor();
+await page.screenshot({ path: `${outDir}/annotation_long_press_delete.png` });
+await page.mouse.up();
+console.log('long-press delete ok');
 await page.locator('.topbar .nav-btn').click();
 await page.getByText('返回后，这次还没导出的修改会丢掉。').waitFor();
 await page.locator('.sheet').getByRole('button', { name: '留下' }).click();

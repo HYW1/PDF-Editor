@@ -747,13 +747,20 @@ function AnnotationLayer({
   onDelete: (id: string) => void;
 }) {
   const [live, setLive] = useState<Record<string, Annotation>>({});
+  const [menuId, setMenuId] = useState<string | null>(null);
   const liveRef = useRef<Record<string, Annotation>>({});
+  const holdTimer = useRef(0);
+  const dragging = useRef(false);
 
   useEffect(() => {
     const next = Object.fromEntries(annotations.map((item) => [item.id, item]));
     liveRef.current = next;
     setLive(next);
   }, [annotations]);
+
+  useEffect(() => {
+    if (!selectedId) setMenuId(null);
+  }, [selectedId]);
 
   const drag = useRef<{
     id: string;
@@ -767,14 +774,29 @@ function AnnotationLayer({
     return live[item.id] || item;
   }
 
+  function clearHold() {
+    window.clearTimeout(holdTimer.current);
+    holdTimer.current = 0;
+  }
+
   function onPointerDown(
     event: PointerEvent<HTMLDivElement>,
     item: Annotation,
     mode: 'move' | 'resize'
   ) {
     event.stopPropagation();
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     onSelect(item.id);
+    dragging.current = false;
+    clearHold();
+    if (mode === 'move') {
+      setMenuId(null);
+      holdTimer.current = window.setTimeout(() => {
+        setMenuId(item.id);
+        holdTimer.current = 0;
+      }, 480);
+    }
     drag.current = {
       id: item.id,
       mode,
@@ -789,8 +811,16 @@ function AnnotationLayer({
     const parent = (event.currentTarget as HTMLElement).parentElement;
     if (!parent) return;
     const box = parent.getBoundingClientRect();
-    const dx = (event.clientX - drag.current.startX) / box.width;
-    const dy = (event.clientY - drag.current.startY) / box.height;
+    const px = event.clientX - drag.current.startX;
+    const py = event.clientY - drag.current.startY;
+    if (!dragging.current && Math.hypot(px, py) > 8) {
+      dragging.current = true;
+      clearHold();
+      setMenuId(null);
+    }
+    if (!dragging.current) return;
+    const dx = px / box.width;
+    const dy = py / box.height;
     const origin = drag.current.origin;
     const next =
       drag.current.mode === 'move'
@@ -812,8 +842,11 @@ function AnnotationLayer({
   function onPointerUp(item: Annotation) {
     if (!drag.current || drag.current.id !== item.id) return;
     const next = liveRef.current[item.id];
+    const moved = dragging.current;
     drag.current = null;
-    if (next) onCommit(item.id, next);
+    dragging.current = false;
+    clearHold();
+    if (moved && next) onCommit(item.id, next);
   }
 
   return (
@@ -835,9 +868,11 @@ function AnnotationLayer({
                   : current.fontSize || 16,
               color: current.color || '#111'
             }}
+            onContextMenu={(event) => event.preventDefault()}
             onPointerDown={(event) => onPointerDown(event, item, 'move')}
             onPointerMove={(event) => onPointerMove(event, item)}
             onPointerUp={() => onPointerUp(item)}
+            onPointerCancel={() => onPointerUp(item)}
           >
             {item.type === 'signature' ? (
               <img className="ann-image" src={current.content} alt="签名" />
@@ -845,22 +880,24 @@ function AnnotationLayer({
               <div className="ann-text">{current.content}</div>
             )}
             {selectedId === item.id && (
-              <>
-                <div
-                  className="ann-handle"
-                  onPointerDown={(event) => onPointerDown(event, item, 'resize')}
-                />
-                <button
-                  type="button"
-                  className="ann-delete"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onDelete(item.id);
-                  }}
-                >
-                  删除
-                </button>
-              </>
+              <div
+                className="ann-handle"
+                onPointerDown={(event) => onPointerDown(event, item, 'resize')}
+              />
+            )}
+            {menuId === item.id && (
+              <button
+                type="button"
+                className="ann-delete"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete(item.id);
+                  setMenuId(null);
+                }}
+              >
+                删除
+              </button>
             )}
           </div>
         );
