@@ -3,23 +3,26 @@ import type { Annotation, LoadedDoc, PageInfo } from './types';
 
 export const COMPRESS_PRESETS = {
   high: {
-    maxEdge: 2200,
-    jpeg: 0.82,
-    bytesPerPixel: 0.18,
+    maxEdge: 1800,
+    jpeg: 0.78,
+    bytesPerPixel: 0.14,
+    ratio: 0.72,
     label: '适合打印',
     hint: '更清晰，适合打印和存档'
   },
   medium: {
-    maxEdge: 1600,
-    jpeg: 0.64,
-    bytesPerPixel: 0.11,
+    maxEdge: 1280,
+    jpeg: 0.58,
+    bytesPerPixel: 0.09,
+    ratio: 0.4,
     label: '适合发送',
     hint: '清晰度和体积平衡'
   },
   low: {
-    maxEdge: 1080,
-    jpeg: 0.42,
-    bytesPerPixel: 0.06,
+    maxEdge: 960,
+    jpeg: 0.4,
+    bytesPerPixel: 0.055,
+    ratio: 0.18,
     label: '适合微信',
     hint: '体积最小，方便转发'
   }
@@ -36,7 +39,7 @@ export function formatEstimate(bytes: number): string {
 
 export function scaleForPage(width: number, height: number, maxEdge: number): number {
   const longEdge = Math.max(width, height, 1);
-  return Math.min(maxEdge / longEdge, 3);
+  return Math.min(maxEdge / longEdge, 2);
 }
 
 export function estimateOriginalBytes(
@@ -73,15 +76,34 @@ export function estimateOriginalBytes(
   return Math.max(1024, Math.round(extra));
 }
 
-export function estimateCompressedBytes(pages: PageInfo[], quality: CompressQuality): number {
+export function clampCompressEstimate(pixelBytes: number, originalBytes: number, ratio: number): number {
+  const original = Math.max(originalBytes, 1024);
+  const fromRatio = Math.round(original * ratio);
+  let value = Math.min(Math.max(pixelBytes, 1024), fromRatio);
+  if (pixelBytes > original) {
+    value = fromRatio;
+  }
+  if (value >= original) {
+    value = Math.round(original * Math.min(ratio + 0.08, 0.92));
+  }
+  return Math.max(1024, Math.min(value, original - 1));
+}
+
+export function estimateCompressedBytes(
+  pages: PageInfo[],
+  quality: CompressQuality,
+  originalBytes = 0
+): number {
   const preset = COMPRESS_PRESETS[quality];
-  let total = 900;
+  let pixel = 900;
   for (const page of pages) {
     const scale = scaleForPage(page.width, page.height, preset.maxEdge);
     const pixels = page.width * scale * page.height * scale;
-    total += pixels * preset.bytesPerPixel + 1800;
+    pixel += pixels * preset.bytesPerPixel + 1800;
   }
-  return Math.max(1024, Math.round(total));
+  pixel = Math.round(pixel);
+  if (!originalBytes) return Math.max(1024, pixel);
+  return clampCompressEstimate(pixel, originalBytes, preset.ratio);
 }
 
 export function estimateExportSizes(
@@ -89,10 +111,9 @@ export function estimateExportSizes(
   docs: Record<string, LoadedDoc>,
   annotations: Annotation[] = []
 ) {
-  return {
-    original: estimateOriginalBytes(pages, docs, annotations),
-    high: estimateCompressedBytes(pages, 'high'),
-    medium: estimateCompressedBytes(pages, 'medium'),
-    low: estimateCompressedBytes(pages, 'low')
-  };
+  const original = estimateOriginalBytes(pages, docs, annotations);
+  const high = estimateCompressedBytes(pages, 'high', original);
+  const medium = Math.min(high, estimateCompressedBytes(pages, 'medium', original));
+  const low = Math.min(medium, estimateCompressedBytes(pages, 'low', original));
+  return { original, high, medium, low };
 }

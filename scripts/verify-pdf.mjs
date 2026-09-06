@@ -289,9 +289,28 @@ console.log('inline url ok');
 
 function scaleForPage(width, height, maxEdge) {
   const longEdge = Math.max(width, height, 1);
-  return Math.min(maxEdge / longEdge, 3);
+  return Math.min(maxEdge / longEdge, 2);
 }
-assert(scaleForPage(595, 842, 1080) < scaleForPage(595, 842, 2200), 'tighter size uses smaller scale');
-assert(Math.abs(scaleForPage(2200, 1100, 2200) - 1) < 0.001, 'already at target edge');
-assert(scaleForPage(400, 400, 2200) === 3, 'tiny pages should cap scale');
+assert(scaleForPage(595, 842, 960) < scaleForPage(595, 842, 1800), 'tighter size uses smaller scale');
+assert(Math.abs(scaleForPage(1800, 1100, 1800) - 1) < 0.001, 'already at target edge');
+assert(scaleForPage(400, 400, 1800) === 2, 'tiny pages should cap scale');
+
+function clampCompressEstimate(pixelBytes, originalBytes, ratio) {
+  const original = Math.max(originalBytes, 1024);
+  const fromRatio = Math.round(original * ratio);
+  let value = Math.min(Math.max(pixelBytes, 1024), fromRatio);
+  if (pixelBytes > original) value = fromRatio;
+  if (value >= original) value = Math.round(original * Math.min(ratio + 0.08, 0.92));
+  return Math.max(1024, Math.min(value, original - 1));
+}
+const tinyOriginal = 3800;
+const wildPixel = 1.8 * 1024 * 1024;
+const printGuess = clampCompressEstimate(wildPixel, tinyOriginal, 0.72);
+assert(printGuess < tinyOriginal, 'tiny files should not estimate megabytes');
+assert(printGuess < 20 * 1024, 'print estimate should stay near the original');
+const bigOriginal = 20 * 1024 * 1024;
+const printBig = clampCompressEstimate(8 * 1024 * 1024, bigOriginal, 0.72);
+const sendBig = clampCompressEstimate(5 * 1024 * 1024, bigOriginal, 0.4);
+const wechatBig = clampCompressEstimate(2 * 1024 * 1024, bigOriginal, 0.18);
+assert(printBig < bigOriginal && sendBig < printBig && wechatBig < sendBig, 'sizes should step down');
 console.log('compress size presets ok');

@@ -24,6 +24,7 @@ import {
   IconUndo
 } from '../ui/icons';
 import { PageCanvas, VisiblePageCanvas } from '../ui/PageCanvas';
+import { ProgressDialog } from '../ui/ProgressDialog';
 import { Toast } from '../ui/Toast';
 import { useIsDesktop } from '../ui/useMedia';
 
@@ -50,6 +51,8 @@ export function Editor() {
   const [editingLine, setEditingLine] = useState<TextLine | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [job, setJob] = useState<{ title: string; done: number; total: number } | null>(null);
+  const toastTimer = useRef(0);
   const stageRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [previewWidth, setPreviewWidth] = useState(280);
@@ -74,7 +77,8 @@ export function Editor() {
 
   function showToast(message: string) {
     setToast(message);
-    window.setTimeout(() => setToast(null), 2200);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2200);
   }
 
   function stopPicking() {
@@ -167,22 +171,32 @@ export function Editor() {
     setSheet(null);
     try {
       setExporting(true);
-      showToast(quality === 'original' ? '正在导出…' : '正在压缩…');
+      setJob({
+        title: quality === 'original' ? '正在导出' : '正在整理页面',
+        done: 0,
+        total: pages.length
+      });
       let bytes = await exportPdf(pages, docs, annotations, (done, total) => {
-        showToast(quality === 'original' ? `正在导出 ${done}/${total}` : `正在整理 ${done}/${total}`);
+        setJob({
+          title: quality === 'original' ? '正在导出' : '正在整理页面',
+          done,
+          total
+        });
       });
       if (quality !== 'original') {
         bytes = await compressPdfBytes(bytes, quality, (done, total) => {
-          showToast(`压缩中 ${done}/${total}`);
+          setJob({ title: '正在压缩', done, total });
         });
       }
       recordExport();
       const suffix = quality === 'original' ? '_编辑.pdf' : `_${compressSuffix(quality)}.pdf`;
       const name = fileName.replace(/\.pdf$/i, '') + suffix;
       downloadBytes(bytes, name);
+      setJob(null);
       showToast('已导出');
     } catch (error) {
       console.error(error);
+      setJob(null);
       showToast(error instanceof Error ? error.message : '导出失败');
     } finally {
       setExporting(false);
@@ -194,14 +208,16 @@ export function Editor() {
     setSheet(null);
     try {
       setExporting(true);
-      showToast('正在导出图片…');
+      setJob({ title: '正在导出图片', done: 0, total: pages.length });
       const images = await renderPagesToPngs(pages, docs, annotations, (done, total) => {
-        showToast(`导出图片 ${done}/${total}`);
+        setJob({ title: '正在导出图片', done, total });
       });
       downloadPageImages(images, fileName);
+      setJob(null);
       showToast(images.length === 1 ? '已导出图片' : `已导出 ${images.length} 张图片`);
     } catch (error) {
       console.error(error);
+      setJob(null);
       showToast(error instanceof Error ? error.message : '导出图片失败');
     } finally {
       setExporting(false);
@@ -643,13 +659,14 @@ export function Editor() {
               <span className="sheet-item-sub">一页一张图片</span>
             </button>
           </div>
-          <p className="sheet-note">三种压缩会按页面长短边缩到对应清晰度，扫描件通常更小。</p>
+          <p className="sheet-note">体积按当前文件估算。扫描件、图片多通常能压小，纯文字稿压完可能差不多。</p>
           <button className="sheet-cancel" onClick={() => setSheet(null)}>
             取消
           </button>
         </div>
       )}
 
+      {job && <ProgressDialog title={job.title} done={job.done} total={job.total} />}
       <Toast message={toast} />
     </div>
   );

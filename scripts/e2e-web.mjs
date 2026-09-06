@@ -248,6 +248,8 @@ await page.getByRole('button', { name: '适合发送' }).waitFor();
 await page.screenshot({ path: `${outDir}/compress_sizes.png` });
 const compressDownload = page.waitForEvent('download', { timeout: 30000 });
 await page.getByRole('button', { name: '适合发送' }).click();
+await page.getByText('正在压缩').waitFor({ timeout: 8000 });
+await page.locator('.progress-card').screenshot({ path: `${outDir}/export_progress.png` });
 const compressed = await compressDownload;
 const compressedPath = `${outDir}/exported_compressed.pdf`;
 await compressed.saveAs(compressedPath);
