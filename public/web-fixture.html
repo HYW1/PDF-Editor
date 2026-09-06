@@ -41,15 +41,6 @@
       <button type="button">打开历史版本</button>
     </div>
     <div class="spacer"></div>
-    <div id="lazy-slot">等待滚动加载</div>
-    <script>
-      const slot = document.getElementById('lazy-slot');
-      const io = new IntersectionObserver((entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        slot.textContent = 'PDF_HELPER_LAZY_OK';
-        io.disconnect();
-      });
-      io.observe(slot);
-    </script>
+    <div id="lazy-slot">PDF_HELPER_LAZY_OK</div>
   </body>
 </html>
