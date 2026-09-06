@@ -1,12 +1,39 @@
 export const WEB_PDF_VIEWPORT = { width: 1280, height: 900, deviceScaleFactor: 1 };
 
+async function promoteLazyImagesOnPage(page) {
+  await page.evaluate(() => {
+    const isPlaceholder = (src) =>
+      !src ||
+      src.startsWith('data:') ||
+      src.startsWith('about:blank') ||
+      /placeholder|bg-placeholder|lazy[-_]?load|spacer\.(gif|png)|blank\.(gif|png|jpe?g)|1x1\.(gif|png)|pixel\.(gif|png)/i.test(
+        src
+      );
+    const lazyUrl = (img) =>
+      img.dataset.src ||
+      img.dataset.original ||
+      img.dataset.lazy ||
+      img.dataset.url ||
+      img.dataset.img ||
+      img.dataset.lazySrc ||
+      (img.getAttribute('data-srcset') || img.getAttribute('srcset') || '').split(',')[0].trim().split(/\s+/)[0];
+    for (const img of document.querySelectorAll('img, source')) {
+      const next = lazyUrl(img);
+      const current = img.getAttribute('src') || '';
+      if (next && isPlaceholder(current)) img.setAttribute('src', next);
+      if (img.tagName === 'IMG') {
+        img.loading = 'eager';
+        img.decoding = 'sync';
+        img.removeAttribute('loading');
+      }
+    }
+  });
+}
+
 export async function revealSiteContent(page) {
+  await promoteLazyImagesOnPage(page);
   await page.evaluate(async () => {
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    document.querySelectorAll('img[data-src], img[data-original]').forEach((img) => {
-      const next = img.dataset.src || img.dataset.original;
-      if (next && (!img.getAttribute('src') || img.src.startsWith('data:'))) img.src = next;
-    });
     document.querySelectorAll('#js_content, .rich_media_content, #img-content').forEach((el) => {
       el.style.setProperty('visibility', 'visible', 'important');
       el.style.setProperty('display', 'block', 'important');
@@ -26,6 +53,7 @@ export async function revealSiteContent(page) {
 }
 
 export async function prepareWebPageForPdf(page) {
+  await promoteLazyImagesOnPage(page);
   await page.evaluate(async () => {
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -39,8 +67,14 @@ export async function prepareWebPageForPdf(page) {
 
     for (const img of document.images) {
       img.loading = 'eager';
-      if (img.dataset.src && !img.getAttribute('src')) img.src = img.dataset.src;
-      if (img.dataset.original && !img.getAttribute('src')) img.src = img.dataset.original;
+      img.decoding = 'sync';
+      const next = img.dataset.src || img.dataset.original || img.dataset.lazy || img.dataset.url || img.dataset.img;
+      const current = img.getAttribute('src') || '';
+      const placeholder =
+        !current ||
+        current.startsWith('data:') ||
+        /placeholder|bg-placeholder|lazy[-_]?load/i.test(current);
+      if (next && placeholder) img.src = next;
     }
 
     const style = document.createElement('style');
@@ -81,19 +115,19 @@ export async function prepareWebPageForPdf(page) {
     const step = Math.max(window.innerHeight * 0.95, 800);
     for (let y = 0; y < limit; y += step) {
       window.scrollTo(0, y);
-      await wait(40);
+      await wait(80);
     }
     window.scrollTo(0, 0);
-    await wait(120);
+    await wait(160);
 
     await Promise.all(
-      [...document.images].slice(0, 40).map((img) => {
-        if (img.complete) return undefined;
+      [...document.images].slice(0, 80).map((img) => {
+        if (img.complete && img.naturalWidth > 1) return undefined;
         return new Promise((resolve) => {
           const done = () => resolve();
           img.addEventListener('load', done, { once: true });
           img.addEventListener('error', done, { once: true });
-          setTimeout(done, 800);
+          setTimeout(done, 1200);
         });
       })
     );

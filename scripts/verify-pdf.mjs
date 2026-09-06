@@ -1,5 +1,10 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
-import { absolutizeUrl, inlineWebPage } from '../server/inline-web-page.mjs';
+import {
+  absolutizeUrl,
+  inlineWebPage,
+  isPlaceholderUrl,
+  promoteLazyImageHtml
+} from '../server/inline-web-page.mjs';
 import { headersForUrl, isNoiseUrl, openAnyPublicPage, textFromHtml } from '../server/open-web-page.mjs';
 import { parsePageUrl } from '../server/parse-page-url.mjs';
 import {
@@ -277,6 +282,22 @@ assert(
 }
 
 assert(absolutizeUrl('//image.uisdc.com/a.webp', 'https://www.uisdc.com/x') === 'https://image.uisdc.com/a.webp', 'protocol-relative image');
+assert(
+  absolutizeUrl(
+    'https://img.zcool.cn/community/work.jpg?x-oss-process=image&amp;imageMogr2',
+    'https://www.zcool.com.cn/work/x.html'
+  ) === 'https://img.zcool.cn/community/work.jpg?x-oss-process=image&imageMogr2',
+  'decode html entities in image urls'
+);
+assert(isPlaceholderUrl('https://public-static.zcool.com.cn/git_z/z/images/new/bg-placeholder.jpg'), 'zcool placeholder');
+assert(!isPlaceholderUrl('https://img.zcool.cn/community/01abc.jpg'), 'zcool work image is not a placeholder');
+{
+  const promoted = promoteLazyImageHtml(
+    '<img class="lazyload photoImage" data-src="https://img.zcool.cn/community/01abc.jpg?x-oss-process=image" src="https://public-static.zcool.com.cn/git_z/z/images/new/bg-placeholder.jpg">'
+  );
+  assert(promoted.includes('img.zcool.cn/community/01abc.jpg'), 'promote lazy src to the work image');
+  assert(!promoted.includes('bg-placeholder.jpg'), 'drop the gray placeholder src');
+}
 console.log('inline url ok');
 
 {
@@ -285,6 +306,53 @@ console.log('inline url ok');
   assert(/data:image\//.test(packed.html), 'inlined page embeds images');
   assert(packed.inlined > 2, `expected several images, got ${packed.inlined}`);
   console.log('inline uisdc ok', { inlined: packed.inlined, bytes: packed.html.length });
+}
+
+{
+  const originalFetch = globalThis.fetch;
+  const fetched = [];
+  globalThis.fetch = async (url) => {
+    const href = String(url);
+    fetched.push(href);
+    if (href.includes('bg-placeholder')) {
+      throw new Error('should not fetch placeholder images');
+    }
+    if (href.includes('img.zcool.cn/community')) {
+      const body = Buffer.alloc(240, 9);
+      return { ok: true, url: href, headers: { get: () => 'image/jpeg' }, arrayBuffer: async () => body };
+    }
+    if (href.includes('zcool.com.cn/work')) {
+      const html =
+        '<html><head><title>耍好手中的笔</title></head><body>' +
+        '<img class="lazyload photoImage" data-src="https://img.zcool.cn/community/work1.jpg" src="https://public-static.zcool.com.cn/git_z/z/images/new/bg-placeholder.jpg">' +
+        '<img class="lazyload photoImage" data-src="https://img.zcool.cn/community/work2.jpg?x-oss-process=image&amp;imageMogr2" src="https://public-static.zcool.com.cn/git_z/z/images/new/bg-placeholder.jpg">' +
+        '</body></html>';
+      return {
+        ok: true,
+        url: href,
+        headers: { get: () => 'text/html' },
+        arrayBuffer: async () => Buffer.from(html)
+      };
+    }
+    throw new Error(`unexpected fetch ${href}`);
+  };
+  try {
+    const packed = await inlineWebPage('https://www.zcool.com.cn/work/ZNzQwOTc5Njg=.html');
+    assert(packed.inlined >= 2, `expected zcool work images, got ${packed.inlined}`);
+    assert(/data:image\/jpeg/.test(packed.html), 'zcool images are inlined');
+    assert(!packed.html.includes('bg-placeholder.jpg'), 'placeholder src is replaced');
+    assert(
+      fetched.some((item) => item.includes('img.zcool.cn/community/work1.jpg')),
+      'fetch the real work image'
+    );
+    assert(
+      fetched.some((item) => item.includes('imageMogr2')),
+      'decode &amp; before fetching lazy image urls'
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  console.log('inline zcool lazy images ok');
 }
 
 function scaleForPage(width, height, maxEdge) {

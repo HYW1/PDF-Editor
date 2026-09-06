@@ -34,13 +34,94 @@ function isNoiseUrl(url) {
 }
 
 const MAX_STYLESHEETS = 8;
-const MAX_IMAGES = 28;
+const MAX_IMAGES = 48;
 const MAX_IMAGE_BYTES = 1_200_000;
 const MAX_TOTAL_BYTES = 9_000_000;
 const FETCH_MS = 8000;
+const LAZY_ATTRS = ['data-src', 'data-original', 'data-lazy', 'data-url', 'data-img', 'data-lazy-src', 'data-lazyload'];
+
+export function decodeHtmlUrl(value) {
+  return String(value || '')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
+}
+
+export function isPlaceholderUrl(url) {
+  return /placeholder|bg-placeholder|lazy[-_]?load|spacer\.(gif|png)|blank\.(gif|png|jpe?g)|1x1\.(gif|png)|pixel\.(gif|png)|transparent\.(gif|png)|default[-_]?(img|image)|nopic|loading[-_]?(gif|png|svg)/i.test(
+    String(url || '')
+  );
+}
+
+function attrValue(tag, name) {
+  const match = String(tag).match(new RegExp(`\\s${name}\\s*=\\s*["']([^"']+)["']`, 'i'));
+  return match?.[1]?.trim() || '';
+}
+
+function firstSrcsetCandidate(value) {
+  if (!value) return '';
+  return String(value).split(',')[0].trim().split(/\s+/)[0] || '';
+}
+
+export function lazyImageUrlFromTag(tag) {
+  for (const name of LAZY_ATTRS) {
+    const value = attrValue(tag, name);
+    if (value && !value.startsWith('data:')) return value;
+  }
+  return firstSrcsetCandidate(attrValue(tag, 'data-srcset') || attrValue(tag, 'srcset'));
+}
+
+function shouldPromoteSrc(src) {
+  if (!src || src.startsWith('data:') || src.startsWith('about:blank')) return true;
+  return isPlaceholderUrl(src);
+}
+
+export function promoteLazyImageHtml(html) {
+  return String(html).replace(/<(?:img|source)\b[^>]*>/gi, (tag) => {
+    const lazy = lazyImageUrlFromTag(tag);
+    if (!lazy) return tag;
+    const src = attrValue(tag, 'src');
+    if (!shouldPromoteSrc(src)) return tag;
+    if (/\ssrc\s*=/.test(tag)) {
+      return tag.replace(/\ssrc\s*=\s*["'][^"']*["']/i, ` src="${lazy}"`);
+    }
+    return tag.replace(/^<(img|source)\b/i, `<$1 src="${lazy}"`);
+  });
+}
+
+function imageScore(url) {
+  const u = String(url || '').toLowerCase();
+  if (isPlaceholderUrl(u)) return -100;
+  if (/img\.zcool\.cn\/community/.test(u)) return 100;
+  if (/wp-content\/uploads/.test(u)) return 90;
+  if (/banner|wp-image|uploads\/20\d{2}|article|content/.test(u)) return 80;
+  if (/avatar|icon|logo|emoji|favicon|sprite/.test(u)) return 5;
+  if (/\.(jpe?g|png|webp)(\?|$)/i.test(u)) return 60;
+  return 20;
+}
+
+function replaceUrlInHtml(html, url, data) {
+  const decoded = decodeHtmlUrl(url);
+  const encoded = decoded.replace(/&/g, '&amp;');
+  let next = html;
+  for (const form of [url, decoded, encoded]) {
+    if (form && next.includes(form)) next = next.split(form).join(data);
+  }
+  const relative = decoded.replace(/^https?:\/\/[^/]+/i, '');
+  if (relative && relative !== decoded && next.includes(relative)) {
+    next = next.split(relative).join(data);
+  }
+  const relativeEncoded = encoded.replace(/^https?:\/\/[^/]+/i, '');
+  if (relativeEncoded && relativeEncoded !== encoded && next.includes(relativeEncoded)) {
+    next = next.split(relativeEncoded).join(data);
+  }
+  return next;
+}
 
 export function absolutizeUrl(url, baseUrl) {
-  const raw = String(url || '')
+  const raw = decodeHtmlUrl(url)
     .trim()
     .replace(/^url\(/i, '')
     .replace(/\)$/i, '')
@@ -142,7 +223,7 @@ export async function inlineWebPage(targetUrl, onProgress) {
   let html = pageRes.buf.toString('utf8');
   if (!html || html.length < 80) throw Object.assign(new Error('网页没有内容'), { expose: true });
   const finalUrl = pageRes.url || targetUrl;
-  html = stripNonContent(html);
+  html = promoteLazyImageHtml(stripNonContent(html));
 
   const budget = { used: 0 };
   const sheets = [...html.matchAll(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi)].slice(0, MAX_STYLESHEETS);
@@ -158,22 +239,19 @@ export async function inlineWebPage(targetUrl, onProgress) {
   const imageUrls = [];
   const pushUrl = (raw) => {
     const abs = absolutizeUrl(raw, finalUrl);
-    if (abs && !abs.startsWith('data:') && !imageUrls.includes(abs)) imageUrls.push(abs);
+    if (!abs || abs.startsWith('data:') || isPlaceholderUrl(abs) || imageUrls.includes(abs)) return;
+    imageUrls.push(abs);
   };
   for (const match of html.matchAll(/<(?:img|source)\b[^>]*>/gi)) {
     const tag = match[0];
-    pushUrl((tag.match(/\s(?:src|data-src|data-original)=["']([^"']+)["']/i) || [])[1]);
-    const srcset = (tag.match(/\ssrcset=["']([^"']+)["']/i) || [])[1];
-    if (srcset) pushUrl(srcset.split(',')[0].trim().split(/\s+/)[0]);
+    pushUrl(attrValue(tag, 'src'));
+    pushUrl(lazyImageUrlFromTag(tag));
   }
   for (const match of html.matchAll(/background-image\s*:\s*url\((['"]?)([^'")]+)\1\)/gi)) {
     pushUrl(match[2]);
   }
 
-  const ranked = imageUrls.sort((a, b) => {
-    const score = (url) => (/banner|wp-image|uploads\/2026|uploads\/2025|article|content/i.test(url) ? 0 : 1);
-    return score(a) - score(b);
-  });
+  const ranked = [...imageUrls].sort((a, b) => imageScore(b) - imageScore(a));
 
   onProgress?.(44, '正在下载图片和样式');
   let inlined = 0;
@@ -182,10 +260,7 @@ export async function inlineWebPage(targetUrl, onProgress) {
     const resource = await fetchResource(url, finalUrl);
     if (!resource || resource.buf.length > MAX_IMAGE_BYTES) continue;
     budget.used += resource.buf.length;
-    const data = toDataUri(resource, url);
-    html = html.split(url).join(data);
-    const relative = url.replace(/^https?:\/\/[^/]+/i, '');
-    if (relative && relative !== url) html = html.split(relative).join(data);
+    html = replaceUrlInHtml(html, url, toDataUri(resource, url));
     inlined += 1;
   }
 
