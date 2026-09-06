@@ -211,6 +211,13 @@ header, .header, nav, .nav, .topbar, [class*="sticky"], [class*="fixed"] {
   top: auto !important;
   bottom: auto !important;
 }
+.loginGuide, .unLoginWrap, .sideUnlogin, .floatNav,
+.detailFixedHead, .detailFixedHeader,
+.leftFixedDetails, .rightFixedDetails,
+[class*="loginGuide"], [class*="unLoginWrap"], [class*="floatNav"],
+[class*="sideUnlogin"], [class*="loginStyle"] {
+  display: none !important;
+}
 * { animation: none !important; transition: none !important; }
 img, video, canvas, svg { max-width: 100% !important; height: auto !important; }
 @page { margin: 0; }
@@ -254,13 +261,24 @@ export async function inlineWebPage(targetUrl, onProgress) {
   const ranked = [...imageUrls].sort((a, b) => imageScore(b) - imageScore(a));
 
   onProgress?.(44, '正在下载图片和样式');
+  const targets = ranked.slice(0, MAX_IMAGES);
+  const fetched = new Array(targets.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(6, targets.length) }, async () => {
+    while (cursor < targets.length) {
+      const index = cursor;
+      cursor += 1;
+      fetched[index] = await fetchResource(targets[index], finalUrl);
+    }
+  });
+  await Promise.all(workers);
   let inlined = 0;
-  for (const url of ranked.slice(0, MAX_IMAGES)) {
+  for (let i = 0; i < targets.length; i += 1) {
     if (budget.used >= MAX_TOTAL_BYTES) break;
-    const resource = await fetchResource(url, finalUrl);
+    const resource = fetched[i];
     if (!resource || resource.buf.length > MAX_IMAGE_BYTES) continue;
     budget.used += resource.buf.length;
-    html = replaceUrlInHtml(html, url, toDataUri(resource, url));
+    html = replaceUrlInHtml(html, targets[i], toDataUri(resource, targets[i]));
     inlined += 1;
   }
 

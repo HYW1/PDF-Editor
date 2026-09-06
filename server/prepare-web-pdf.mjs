@@ -30,8 +30,38 @@ async function promoteLazyImagesOnPage(page) {
   });
 }
 
+async function hideSiteChromeOnPage(page) {
+  await page.evaluate(() => {
+    const hide = (el) => {
+      if (!el) return;
+      el.style.setProperty('display', 'none', 'important');
+    };
+    document.querySelectorAll(
+      [
+        '.loginGuide',
+        '.unLoginWrap',
+        '.sideUnlogin',
+        '.floatNav',
+        '.detailFixedHead',
+        '.detailFixedHeader',
+        '.leftFixedDetails',
+        '.rightFixedDetails',
+        '[class*="loginGuide"]',
+        '[class*="unLoginWrap"]',
+        '[class*="floatNav"]',
+        '[class*="sideUnlogin"]',
+        '[class*="loginStyle"]'
+      ].join(',')
+    ).forEach(hide);
+    for (const el of document.querySelectorAll('aside, dialog, [class*="modal"], [class*="Modal"]')) {
+      if (/欢迎登录|去登录|登录站酷/.test(el.textContent || '')) hide(el);
+    }
+  });
+}
+
 export async function revealSiteContent(page) {
   await promoteLazyImagesOnPage(page);
+  await hideSiteChromeOnPage(page);
   await page.evaluate(async () => {
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     document.querySelectorAll('#js_content, .rich_media_content, #img-content').forEach((el) => {
@@ -54,6 +84,7 @@ export async function revealSiteContent(page) {
 
 export async function prepareWebPageForPdf(page) {
   await promoteLazyImagesOnPage(page);
+  await hideSiteChromeOnPage(page);
   await page.evaluate(async () => {
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

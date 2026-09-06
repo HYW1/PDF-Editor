@@ -3,6 +3,7 @@ import {
   absolutizeUrl,
   inlineWebPage,
   isPlaceholderUrl,
+  PAGE_PRINT_CSS,
   promoteLazyImageHtml
 } from '../server/inline-web-page.mjs';
 import { headersForUrl, isNoiseUrl, openAnyPublicPage, textFromHtml } from '../server/open-web-page.mjs';
@@ -298,6 +299,7 @@ assert(!isPlaceholderUrl('https://img.zcool.cn/community/01abc.jpg'), 'zcool wor
   assert(promoted.includes('img.zcool.cn/community/01abc.jpg'), 'promote lazy src to the work image');
   assert(!promoted.includes('bg-placeholder.jpg'), 'drop the gray placeholder src');
 }
+assert(PAGE_PRINT_CSS.includes('loginGuide'), 'print css hides the zcool login overlay');
 console.log('inline url ok');
 
 {
