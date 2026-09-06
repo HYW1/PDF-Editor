@@ -138,9 +138,11 @@ export async function loadPageFromHtml(page, targetUrl, onProgress) {
 }
 
 export function textFromHtml(html) {
-  const rawTitle = (String(html).match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '';
+  const raw = String(html);
+  const rawTitle = (raw.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '';
+  const main = raw.match(/<article\b[\s\S]*?<\/article>/i)?.[0] || raw.match(/<main\b[\s\S]*?<\/main>/i)?.[0] || raw;
   const text = decodeHtml(
-    String(html)
+    main
       .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
       .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, ' ')

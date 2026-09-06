@@ -232,6 +232,7 @@ assert(
   );
   assert(extracted.title.includes('优设网'), 'html title');
   assert(extracted.text.includes('大家好，这是 9 月整理的第二波'), 'html article text');
+  assert(!extracted.text.includes('菜单'), 'article extract should skip the site menu');
   const html = articleFallbackHtml('优设合集', extracted.text);
   assert(html.includes('大家好，这是 9 月整理的第二波'), 'fallback html keeps article text');
   const bytes = await textToPdfBytes(extracted.title, `${extracted.text}\n这一期整理了 6 个相对比较全的 Skill 合集。`);
