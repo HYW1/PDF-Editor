@@ -324,7 +324,9 @@ export async function finishOpenPage(page, targetUrl, onProgress, extracted = {}
     /* keep a printable default size */
   }
   const title = again.title || snap.title || extracted.title || '';
-  const text = (snap.text || '').length >= (extracted.text || '').length ? snap.text : extracted.text;
+  const extractedText = extracted.text || '';
+  const snapText = snap.text || '';
+  const text = extractedText.replace(/\s+/g, '').length >= 40 ? extractedText : snapText || extractedText;
   return {
     size,
     title,
