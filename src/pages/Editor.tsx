@@ -660,7 +660,7 @@ export function Editor() {
               <span className="sheet-item-sub">一页一张图片</span>
             </button>
           </div>
-          <p className="sheet-note">压缩会压到比原文件小。扫描件、PPT、图片多通常更明显；已经很小或纯文字的稿，可能压不下去。</p>
+          <p className="sheet-note">适合打印会尽量保持清晰。已经很小或纯文字的稿，可能压不下去，会直接留下原文件。</p>
           <button className="sheet-cancel" onClick={() => setSheet(null)}>
             取消
           </button>

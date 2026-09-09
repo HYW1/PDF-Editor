@@ -3,26 +3,26 @@ import type { Annotation, LoadedDoc, PageInfo } from './types';
 
 export const COMPRESS_PRESETS = {
   high: {
-    maxEdge: 1800,
-    jpeg: 0.78,
-    bytesPerPixel: 0.14,
-    ratio: 0.72,
+    maxEdge: 2200,
+    jpeg: 0.88,
+    bytesPerPixel: 0.18,
+    ratio: 0.75,
     label: '适合打印',
     hint: '更清晰，适合打印和存档'
   },
   medium: {
-    maxEdge: 1280,
-    jpeg: 0.58,
-    bytesPerPixel: 0.09,
-    ratio: 0.4,
+    maxEdge: 1400,
+    jpeg: 0.72,
+    bytesPerPixel: 0.1,
+    ratio: 0.45,
     label: '适合发送',
     hint: '清晰度和体积平衡'
   },
   low: {
-    maxEdge: 960,
-    jpeg: 0.4,
-    bytesPerPixel: 0.055,
-    ratio: 0.18,
+    maxEdge: 1000,
+    jpeg: 0.52,
+    bytesPerPixel: 0.06,
+    ratio: 0.22,
     label: '适合微信',
     hint: '体积最小，方便转发'
   }
@@ -39,35 +39,16 @@ export function formatEstimate(bytes: number): string {
 
 export function scaleForPage(width: number, height: number, maxEdge: number): number {
   const longEdge = Math.max(width, height, 1);
-  return Math.min(1, maxEdge / longEdge);
+  return Math.min(3, maxEdge / longEdge);
 }
 
 export function compressProfile(
-  originalBytes: number,
-  pageCount: number,
+  _originalBytes: number,
+  _pageCount: number,
   quality: CompressQuality
 ): { maxEdge: number; jpegQuality: number } {
   const preset = COMPRESS_PRESETS[quality];
-  const perPage = (Math.max(originalBytes, 1024) * preset.ratio) / Math.max(1, pageCount);
-  let maxEdge: number = preset.maxEdge;
-  let jpegQuality: number = preset.jpeg;
-  if (perPage < 28_000) {
-    maxEdge = Math.min(maxEdge, 640);
-    jpegQuality = Math.min(jpegQuality, 0.28);
-  } else if (perPage < 55_000) {
-    maxEdge = Math.min(maxEdge, 800);
-    jpegQuality = Math.min(jpegQuality, 0.36);
-  } else if (perPage < 100_000) {
-    maxEdge = Math.min(maxEdge, 1000);
-    jpegQuality = Math.min(jpegQuality, 0.48);
-  } else if (perPage < 180_000) {
-    maxEdge = Math.min(maxEdge, 1280);
-    jpegQuality = Math.min(jpegQuality, 0.58);
-  } else {
-    maxEdge = Math.min(maxEdge, 1600);
-    jpegQuality = Math.min(jpegQuality, 0.68);
-  }
-  return { maxEdge, jpegQuality };
+  return { maxEdge: preset.maxEdge, jpegQuality: preset.jpeg };
 }
 
 export function estimateOriginalBytes(

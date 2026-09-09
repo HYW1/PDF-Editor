@@ -444,6 +444,20 @@ await assertPreviewFlush(page, 'landscape preview');
 await page.screenshot({ path: `${outDir}/editor_landscape_preview.png` });
 const fatOriginal = await readFile(fatPath);
 await page.getByRole('button', { name: '导出' }).click();
+const fatPrintDownload = page.waitForEvent('download', { timeout: 45000 });
+await page.getByRole('button', { name: '适合打印' }).click();
+await page.getByText('正在压缩').waitFor({ timeout: 8000 });
+const fatPrintFile = await fatPrintDownload;
+const fatPrintPath = `${outDir}/fat-landscape-print.pdf`;
+await fatPrintFile.saveAs(fatPrintPath);
+const fatPrint = await readFile(fatPrintPath);
+if (fatPrint.byteLength < fatOriginal.byteLength * 0.45 && fatPrint.byteLength !== fatOriginal.byteLength) {
+  throw new Error(
+    `print compress was too small ${fatOriginal.byteLength} -> ${fatPrint.byteLength}`
+  );
+}
+console.log('landscape print ok', { from: fatOriginal.byteLength, to: fatPrint.byteLength });
+await page.getByRole('button', { name: '导出' }).click();
 const fatDownload = page.waitForEvent('download', { timeout: 45000 });
 await page.getByRole('button', { name: '适合微信' }).click();
 await page.getByText('正在压缩').waitFor({ timeout: 8000 });
@@ -458,8 +472,14 @@ if (fatCompressed.byteLength >= fatOriginal.byteLength) {
 }
 console.log('landscape compress ok', {
   from: fatOriginal.byteLength,
+  print: fatPrint.byteLength,
   to: fatCompressed.byteLength
 });
+if (fatCompressed.byteLength > fatPrint.byteLength) {
+  throw new Error(
+    `wechat compress should not be larger than print ${fatPrint.byteLength} -> ${fatCompressed.byteLength}`
+  );
+}
 await page.getByRole('button', { name: '返回', exact: true }).click();
 await page.getByRole('heading', { name: 'PDF小助手' }).waitFor();
 

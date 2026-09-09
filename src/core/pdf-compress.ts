@@ -10,12 +10,11 @@ import './pdf-render';
 
 export type ExportQuality = 'original' | CompressQuality;
 
-const RETRY_PROFILES = [
-  { maxEdge: 1000, jpegQuality: 0.42 },
-  { maxEdge: 800, jpegQuality: 0.32 },
-  { maxEdge: 640, jpegQuality: 0.24 },
-  { maxEdge: 512, jpegQuality: 0.18 }
-] as const;
+const GENTLE_RETRIES: Record<CompressQuality, ReadonlyArray<{ maxEdge: number; jpegQuality: number }>> = {
+  high: [{ maxEdge: 2000, jpegQuality: 0.84 }],
+  medium: [{ maxEdge: 1200, jpegQuality: 0.64 }],
+  low: [{ maxEdge: 880, jpegQuality: 0.44 }]
+};
 
 export function qualityLabel(quality: ExportQuality): string {
   if (quality === 'original') return '原文件';
@@ -37,15 +36,13 @@ export async function compressPdfBytes(
   const pdf = await pdfjs.getDocument({ data }).promise;
   const profiles = [
     compressProfile(originalSize, pdf.numPages, quality),
-    ...RETRY_PROFILES
+    ...GENTLE_RETRIES[quality]
   ];
 
   try {
-    let best: Uint8Array | null = null;
     for (const profile of profiles) {
       const next = await rasterizePdf(pdf, profile, onProgress);
-      if (!best || next.byteLength < best.byteLength) best = next;
-      if (best.byteLength < originalSize) return best;
+      if (next.byteLength < originalSize) return next;
     }
     return bytes;
   } finally {
