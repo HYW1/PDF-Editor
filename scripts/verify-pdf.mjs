@@ -410,19 +410,19 @@ assert(scaleForPage(2000, 1200, 960) < scaleForPage(2000, 1200, 1800), 'tighter 
 assert(Math.abs(scaleForPage(1800, 1100, 1800) - 1) < 0.001, 'already at target edge');
 assert(scaleForPage(400, 400, 1800) > 1, 'print raster can exceed PDF points');
 assert(scaleForPage(720, 540, 1800) > 2, 'PPT print pages render above screen dpi');
-assert(scaleForPage(825, 1167, 3000) > 2.4, 'web-to-pdf high quality is not stuck at 72dpi');
+assert(scaleForPage(825, 1167, 2600) > 2, 'web-to-pdf high quality is not stuck at 72dpi');
 
 function compressProfile(_originalBytes, _pageCount, quality) {
   const presets = {
-    high: { maxEdge: 3000, jpegQuality: 0.94 },
+    high: { maxEdge: 2600, jpegQuality: 0.91 },
     medium: { maxEdge: 1800, jpegQuality: 0.82 },
     low: { maxEdge: 1200, jpegQuality: 0.64 }
   };
   return presets[quality];
 }
 const printProfile = compressProfile(21.2 * 1024 * 1024, 19, 'high');
-assert(printProfile.maxEdge >= 2800, 'high compress keeps a large pixel edge');
-assert(printProfile.jpegQuality >= 0.92, 'high compress keeps jpeg quality');
+assert(printProfile.maxEdge >= 2400, 'high compress keeps a large pixel edge');
+assert(printProfile.jpegQuality >= 0.88 && printProfile.jpegQuality < 0.94, 'high jpeg should shrink without going mushy');
 
 function clampCompressEstimate(pixelBytes, originalBytes) {
   const original = Math.max(originalBytes, 1024);
@@ -462,9 +462,23 @@ const sampled = estimateFromSamples([248_000, 252_000], 45, bigOriginal);
 assert(Math.abs(sampled - (250_000 * 45 + 900 + 220 * 45)) < 1, `sample estimate ${sampled}`);
 assert(Math.abs(sampled / (1024 * 1024) - 10.7) < 0.2, 'sample estimate stays within 0.2MB');
 
+function pickShrinkingEstimate(candidates, originalBytes) {
+  const usable = candidates.filter((item) => item > 0);
+  const shrinking = usable.filter((item) => item < originalBytes * 0.97);
+  return shrinking[0] || usable[usable.length - 1] || 0;
+}
+assert(
+  Math.abs(pickShrinkingEstimate([bigOriginal - 50, bigOriginal * 0.78, bigOriginal * 0.5], bigOriginal) - bigOriginal * 0.78) < 1,
+  'high estimate should pick the first size that actually shrinks'
+);
+assert(
+  pickShrinkingEstimate([bigOriginal - 10, bigOriginal - 20], bigOriginal) === bigOriginal - 20,
+  'if nothing shrinks enough, keep the smallest high-quality try'
+);
+
 function estimateCompressedBytes(pages, quality, originalBytes) {
   const preset = {
-    high: { maxEdge: 3000, bytesPerPixel: 0.078 },
+    high: { maxEdge: 2600, bytesPerPixel: 0.06 },
     medium: { maxEdge: 1800, bytesPerPixel: 0.052 },
     low: { maxEdge: 1200, bytesPerPixel: 0.034 }
   }[quality];
@@ -478,7 +492,8 @@ function estimateCompressedBytes(pages, quality, originalBytes) {
 }
 const zcoolPages = Array.from({ length: 45 }, () => ({ width: 825, height: 1167 }));
 const zcoolPrint = estimateCompressedBytes(zcoolPages, 'high', bigOriginal);
-assert(zcoolPrint < bigOriginal, 'high estimate stays below the original');
+assert(zcoolPrint < bigOriginal - 1.5 * 1024 * 1024, 'high quality must estimate smaller than direct export');
+assert(zcoolPrint > 8 * 1024 * 1024, 'high quality should stay well above the blurry 4-11MB range');
 assert(
   estimateCompressedBytes(zcoolPages, 'medium', bigOriginal) < zcoolPrint,
   'medium should estimate smaller than high'

@@ -13,7 +13,10 @@ import type { LoadedDoc, PageInfo } from './types';
 export type ExportQuality = 'original' | CompressQuality;
 
 const GENTLE_RETRIES: Record<CompressQuality, ReadonlyArray<{ maxEdge: number; jpegQuality: number }>> = {
-  high: [],
+  high: [
+    { maxEdge: 2600, jpegQuality: 0.88 },
+    { maxEdge: 2400, jpegQuality: 0.9 }
+  ],
   medium: [{ maxEdge: 1600, jpegQuality: 0.76 }],
   low: [{ maxEdge: 1000, jpegQuality: 0.56 }]
 };
@@ -58,6 +61,12 @@ export function samplePageIndexes(pageCount: number): number[] {
   return [0, Math.floor((pageCount - 1) / 2)];
 }
 
+export function pickShrinkingEstimate(candidates: number[], originalBytes: number): number {
+  const usable = candidates.filter((item) => item > 0);
+  const shrinking = usable.filter((item) => item < originalBytes * 0.97);
+  return shrinking[0] || usable[usable.length - 1] || 0;
+}
+
 export async function probeCompressSizes(
   pages: PageInfo[],
   docs: Record<string, LoadedDoc>,
@@ -65,6 +74,8 @@ export async function probeCompressSizes(
 ): Promise<{ high: number; medium: number; low: number }> {
   const indexes = samplePageIndexes(pages.length);
   const highSamples: number[] = [];
+  const highTightSamples: number[] = [];
+  const highFallbackSamples: number[] = [];
   const mediumSamples: number[] = [];
   const lowSamples: number[] = [];
 
@@ -74,41 +85,55 @@ export async function probeCompressSizes(
     const measured = await measurePageQualityJpegs(page, docs);
     if (!measured) continue;
     highSamples.push(measured.high);
+    highTightSamples.push(measured.highTight);
+    highFallbackSamples.push(measured.highFallback);
     mediumSamples.push(measured.medium);
     lowSamples.push(measured.low);
   }
 
-    const high = estimateFromSamples(highSamples, pages.length, originalBytes);
-    const medium = Math.min(
-      high || Infinity,
-      estimateFromSamples(mediumSamples, pages.length, originalBytes)
-    );
-    const low = Math.min(
-      medium || Infinity,
-      estimateFromSamples(lowSamples, pages.length, originalBytes)
-    );
-    if (!high) throw new Error('probe empty');
-    return { high, medium: medium || high, low: low || medium || high };
+  const highShown = pickShrinkingEstimate(
+    [
+      estimateFromSamples(highSamples, pages.length, originalBytes),
+      estimateFromSamples(highTightSamples, pages.length, originalBytes),
+      estimateFromSamples(highFallbackSamples, pages.length, originalBytes)
+    ],
+    originalBytes
+  );
+  const medium = Math.min(
+    highShown || Infinity,
+    estimateFromSamples(mediumSamples, pages.length, originalBytes)
+  );
+  const low = Math.min(
+    medium || Infinity,
+    estimateFromSamples(lowSamples, pages.length, originalBytes)
+  );
+  if (!highShown) throw new Error('probe empty');
+  return { high: highShown, medium: medium || highShown, low: low || medium || highShown };
 }
 
 async function measurePageQualityJpegs(
   page: PageInfo,
   docs: Record<string, LoadedDoc>
-): Promise<{ high: number; medium: number; low: number } | null> {
+): Promise<{ high: number; highTight: number; highFallback: number; medium: number; low: number } | null> {
   const highCanvas = await renderPageForCompress(page, docs, COMPRESS_PRESETS.high.maxEdge);
   if (!highCanvas) return null;
   const high = (await canvasToJpeg(highCanvas, COMPRESS_PRESETS.high.jpeg)).byteLength;
+  const highTight = (await canvasToJpeg(highCanvas, 0.88)).byteLength;
+  const fallbackCanvas = scaleCanvasToMaxEdge(highCanvas, 2400);
+  const highFallback = (await canvasToJpeg(fallbackCanvas, 0.9)).byteLength;
   const mediumCanvas = scaleCanvasToMaxEdge(highCanvas, COMPRESS_PRESETS.medium.maxEdge);
   const medium = (await canvasToJpeg(mediumCanvas, COMPRESS_PRESETS.medium.jpeg)).byteLength;
   const lowCanvas = scaleCanvasToMaxEdge(highCanvas, COMPRESS_PRESETS.low.maxEdge);
   const low = (await canvasToJpeg(lowCanvas, COMPRESS_PRESETS.low.jpeg)).byteLength;
   highCanvas.width = 0;
   highCanvas.height = 0;
+  fallbackCanvas.width = 0;
+  fallbackCanvas.height = 0;
   mediumCanvas.width = 0;
   mediumCanvas.height = 0;
   lowCanvas.width = 0;
   lowCanvas.height = 0;
-  return { high, medium, low };
+  return { high, highTight, highFallback, medium, low };
 }
 
 async function renderPageForCompress(

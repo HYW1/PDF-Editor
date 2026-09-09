@@ -3,12 +3,12 @@ import type { Annotation, LoadedDoc, PageInfo } from './types';
 
 export const COMPRESS_PRESETS = {
   high: {
-    maxEdge: 3000,
-    jpeg: 0.94,
-    bytesPerPixel: 0.078,
-    ratio: 0.92,
+    maxEdge: 2600,
+    jpeg: 0.91,
+    bytesPerPixel: 0.06,
+    ratio: 0.78,
     label: '高质量',
-    hint: '更清晰，文件更大'
+    hint: '尽量保持清晰，文件会小一截'
   },
   medium: {
     maxEdge: 1800,
