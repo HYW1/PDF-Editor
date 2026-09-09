@@ -326,10 +326,10 @@ if (exported.getPageCount() !== 3) {
 console.log('exported', download.suggestedFilename(), 'pages', exported.getPageCount());
 
 await page.getByRole('button', { name: '导出' }).click();
-await page.getByRole('button', { name: '适合发送' }).waitFor();
+await page.getByRole('button', { name: '中质量' }).waitFor();
 await page.screenshot({ path: `${outDir}/compress_sizes.png` });
 const compressDownload = page.waitForEvent('download', { timeout: 30000 });
-await page.getByRole('button', { name: '适合发送' }).click();
+await page.getByRole('button', { name: '中质量' }).click();
 await page.getByText('正在压缩').waitFor({ timeout: 8000 });
 await page.locator('.progress-card').screenshot({ path: `${outDir}/export_progress.png` });
 const compressed = await compressDownload;
@@ -445,7 +445,7 @@ await page.screenshot({ path: `${outDir}/editor_landscape_preview.png` });
 const fatOriginal = await readFile(fatPath);
 await page.getByRole('button', { name: '导出' }).click();
 const fatPrintDownload = page.waitForEvent('download', { timeout: 45000 });
-await page.getByRole('button', { name: '适合打印' }).click();
+await page.getByRole('button', { name: '高质量' }).click();
 await page.getByText('正在压缩').waitFor({ timeout: 8000 });
 const fatPrintFile = await fatPrintDownload;
 const fatPrintPath = `${outDir}/fat-landscape-print.pdf`;
@@ -459,7 +459,7 @@ if (fatPrint.byteLength < fatOriginal.byteLength * 0.45 && fatPrint.byteLength !
 console.log('landscape print ok', { from: fatOriginal.byteLength, to: fatPrint.byteLength });
 await page.getByRole('button', { name: '导出' }).click();
 const fatDownload = page.waitForEvent('download', { timeout: 45000 });
-await page.getByRole('button', { name: '适合微信' }).click();
+await page.getByRole('button', { name: '低质量' }).click();
 await page.getByText('正在压缩').waitFor({ timeout: 8000 });
 const fatFile = await fatDownload;
 const fatOutPath = `${outDir}/fat-landscape-wechat.pdf`;

@@ -3,28 +3,28 @@ import type { Annotation, LoadedDoc, PageInfo } from './types';
 
 export const COMPRESS_PRESETS = {
   high: {
-    maxEdge: 2200,
-    jpeg: 0.88,
-    bytesPerPixel: 0.18,
-    ratio: 0.75,
-    label: '适合打印',
-    hint: '更清晰，适合打印和存档'
+    maxEdge: 3000,
+    jpeg: 0.94,
+    bytesPerPixel: 0.078,
+    ratio: 0.92,
+    label: '高质量',
+    hint: '更清晰，文件更大'
   },
   medium: {
-    maxEdge: 1400,
-    jpeg: 0.72,
-    bytesPerPixel: 0.1,
-    ratio: 0.45,
-    label: '适合发送',
-    hint: '清晰度和体积平衡'
+    maxEdge: 1800,
+    jpeg: 0.82,
+    bytesPerPixel: 0.052,
+    ratio: 0.55,
+    label: '中质量',
+    hint: '清晰和体积比较均衡'
   },
   low: {
-    maxEdge: 1000,
-    jpeg: 0.52,
-    bytesPerPixel: 0.06,
-    ratio: 0.22,
-    label: '适合微信',
-    hint: '体积最小，方便转发'
+    maxEdge: 1200,
+    jpeg: 0.64,
+    bytesPerPixel: 0.034,
+    ratio: 0.32,
+    label: '低质量',
+    hint: '文件更小，画质一般'
   }
 } as const;
 
@@ -32,14 +32,13 @@ export type CompressQuality = keyof typeof COMPRESS_PRESETS;
 
 export function formatEstimate(bytes: number): string {
   const mb = bytes / (1024 * 1024);
-  if (mb >= 10) return `约 ${mb.toFixed(0)} MB`;
   if (mb >= 0.1) return `约 ${mb.toFixed(1)} MB`;
   return `约 ${formatSize(bytes)}`;
 }
 
 export function scaleForPage(width: number, height: number, maxEdge: number): number {
   const longEdge = Math.max(width, height, 1);
-  return Math.min(3, maxEdge / longEdge);
+  return Math.min(4, maxEdge / longEdge);
 }
 
 export function compressProfile(
@@ -85,17 +84,23 @@ export function estimateOriginalBytes(
   return Math.max(1024, Math.round(extra));
 }
 
-export function clampCompressEstimate(pixelBytes: number, originalBytes: number, ratio: number): number {
+export function clampCompressEstimate(pixelBytes: number, originalBytes: number, _ratio = 1): number {
   const original = Math.max(originalBytes, 1024);
-  const fromRatio = Math.round(original * ratio);
-  let value = Math.min(Math.max(pixelBytes, 1024), fromRatio);
-  if (pixelBytes > original) {
-    value = fromRatio;
-  }
-  if (value >= original) {
-    value = Math.round(original * Math.min(ratio + 0.08, 0.92));
-  }
-  return Math.max(1024, Math.min(value, original - 1));
+  const value = Math.max(1024, Math.round(pixelBytes));
+  if (value >= original) return original - 1;
+  return value;
+}
+
+export function estimateFromSamples(
+  sampleJpegBytes: number[],
+  pageCount: number,
+  originalBytes: number
+): number {
+  const usable = sampleJpegBytes.filter((item) => item > 0);
+  if (!usable.length) return 0;
+  const avg = usable.reduce((sum, item) => sum + item, 0) / usable.length;
+  const overhead = 900 + 220 * Math.max(1, pageCount);
+  return clampCompressEstimate(avg * Math.max(1, pageCount) + overhead, originalBytes);
 }
 
 export function estimateCompressedBytes(

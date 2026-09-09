@@ -404,56 +404,69 @@ console.log('inline url ok');
 
 function scaleForPage(width, height, maxEdge) {
   const longEdge = Math.max(width, height, 1);
-  return Math.min(3, maxEdge / longEdge);
+  return Math.min(4, maxEdge / longEdge);
 }
 assert(scaleForPage(2000, 1200, 960) < scaleForPage(2000, 1200, 1800), 'tighter size uses smaller scale');
 assert(Math.abs(scaleForPage(1800, 1100, 1800) - 1) < 0.001, 'already at target edge');
 assert(scaleForPage(400, 400, 1800) > 1, 'print raster can exceed PDF points');
 assert(scaleForPage(720, 540, 1800) > 2, 'PPT print pages render above screen dpi');
-assert(scaleForPage(825, 1167, 2200) > 1.8, 'web-to-pdf print pages are not stuck at 72dpi');
+assert(scaleForPage(825, 1167, 3000) > 2.4, 'web-to-pdf high quality is not stuck at 72dpi');
 
 function compressProfile(_originalBytes, _pageCount, quality) {
   const presets = {
-    high: { maxEdge: 2200, jpegQuality: 0.88 },
-    medium: { maxEdge: 1400, jpegQuality: 0.72 },
-    low: { maxEdge: 1000, jpegQuality: 0.52 }
+    high: { maxEdge: 3000, jpegQuality: 0.94 },
+    medium: { maxEdge: 1800, jpegQuality: 0.82 },
+    low: { maxEdge: 1200, jpegQuality: 0.64 }
   };
   return presets[quality];
 }
 const printProfile = compressProfile(21.2 * 1024 * 1024, 19, 'high');
-assert(printProfile.maxEdge >= 2000, 'print compress keeps a large pixel edge');
-assert(printProfile.jpegQuality >= 0.84, 'print compress keeps jpeg quality');
+assert(printProfile.maxEdge >= 2800, 'high compress keeps a large pixel edge');
+assert(printProfile.jpegQuality >= 0.92, 'high compress keeps jpeg quality');
 
-function clampCompressEstimate(pixelBytes, originalBytes, ratio) {
+function clampCompressEstimate(pixelBytes, originalBytes) {
   const original = Math.max(originalBytes, 1024);
-  const fromRatio = Math.round(original * ratio);
-  let value = Math.min(Math.max(pixelBytes, 1024), fromRatio);
-  if (pixelBytes > original) value = fromRatio;
-  if (value >= original) value = Math.round(original * Math.min(ratio + 0.08, 0.92));
-  return Math.max(1024, Math.min(value, original - 1));
+  const value = Math.max(1024, Math.round(pixelBytes));
+  if (value >= original) return original - 1;
+  return value;
 }
+function formatEstimate(bytes) {
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 0.1) return `约 ${mb.toFixed(1)} MB`;
+  return `约 ${bytes} B`;
+}
+assert(formatEstimate(16.4 * 1024 * 1024) === '约 16.4 MB', 'estimates keep one decimal');
+assert(formatEstimate(11.2 * 1024 * 1024) === '约 11.2 MB', '11.2 mb stays 11.2');
+
 const tinyOriginal = 3800;
 const wildPixel = 1.8 * 1024 * 1024;
-const printGuess = clampCompressEstimate(wildPixel, tinyOriginal, 0.75);
+const printGuess = clampCompressEstimate(wildPixel, tinyOriginal);
 assert(printGuess < tinyOriginal, 'tiny files should not estimate megabytes');
 assert(printGuess < 20 * 1024, 'print estimate should stay near the original');
 const bigOriginal = 21.2 * 1024 * 1024;
-const printBig = clampCompressEstimate(12 * 1024 * 1024, bigOriginal, 0.75);
-const sendBig = clampCompressEstimate(6 * 1024 * 1024, bigOriginal, 0.45);
-const wechatBig = clampCompressEstimate(3 * 1024 * 1024, bigOriginal, 0.22);
+const measuredHigh = 11.2 * 1024 * 1024;
+const printBig = clampCompressEstimate(measuredHigh, bigOriginal);
+assert(Math.abs(printBig - measuredHigh) < 1024, 'estimate should follow measured jpeg size');
+assert(printBig > 10 * 1024 * 1024 && printBig < 12 * 1024 * 1024, '11.2MB should not be shown as 16MB');
+const sendBig = clampCompressEstimate(6.1 * 1024 * 1024, bigOriginal);
+const wechatBig = clampCompressEstimate(3.2 * 1024 * 1024, bigOriginal);
 assert(printBig < bigOriginal && sendBig < printBig && wechatBig < sendBig, 'sizes should step down');
-assert(printBig > 8 * 1024 * 1024, 'print estimate for a 21MB photo pdf should stay large');
-const pptOriginal = Math.round(15.7 * 1024 * 1024);
-const pptPrint = clampCompressEstimate(220 * 1024 * 56, pptOriginal, 0.75);
-const pptSend = clampCompressEstimate(120 * 1024 * 56, pptOriginal, 0.45);
-const pptWechat = clampCompressEstimate(50 * 1024 * 56, pptOriginal, 0.22);
-assert(pptPrint < pptOriginal && pptSend < pptPrint && pptWechat < pptSend, '56-page PPT estimates must stay below the original');
+
+function estimateFromSamples(sampleJpegBytes, pageCount, originalBytes) {
+  const usable = sampleJpegBytes.filter((item) => item > 0);
+  const avg = usable.reduce((sum, item) => sum + item, 0) / usable.length;
+  const overhead = 900 + 220 * pageCount;
+  return clampCompressEstimate(avg * pageCount + overhead, originalBytes);
+}
+const sampled = estimateFromSamples([248_000, 252_000], 45, bigOriginal);
+assert(Math.abs(sampled - (250_000 * 45 + 900 + 220 * 45)) < 1, `sample estimate ${sampled}`);
+assert(Math.abs(sampled / (1024 * 1024) - 10.7) < 0.2, 'sample estimate stays within 0.2MB');
 
 function estimateCompressedBytes(pages, quality, originalBytes) {
   const preset = {
-    high: { maxEdge: 2200, bytesPerPixel: 0.18, ratio: 0.75 },
-    medium: { maxEdge: 1400, bytesPerPixel: 0.1, ratio: 0.45 },
-    low: { maxEdge: 1000, bytesPerPixel: 0.06, ratio: 0.22 }
+    high: { maxEdge: 3000, bytesPerPixel: 0.078 },
+    medium: { maxEdge: 1800, bytesPerPixel: 0.052 },
+    low: { maxEdge: 1200, bytesPerPixel: 0.034 }
   }[quality];
   let pixel = 900;
   for (const page of pages) {
@@ -461,14 +474,13 @@ function estimateCompressedBytes(pages, quality, originalBytes) {
     const pixels = page.width * scale * page.height * scale;
     pixel += pixels * preset.bytesPerPixel + 1800;
   }
-  return clampCompressEstimate(Math.round(pixel), originalBytes, preset.ratio);
+  return clampCompressEstimate(Math.round(pixel), originalBytes);
 }
-const zcoolPages = Array.from({ length: 19 }, () => ({ width: 825, height: 1167 }));
+const zcoolPages = Array.from({ length: 45 }, () => ({ width: 825, height: 1167 }));
 const zcoolPrint = estimateCompressedBytes(zcoolPages, 'high', bigOriginal);
-assert(zcoolPrint > 8 * 1024 * 1024, `print estimate too small: ${zcoolPrint}`);
-assert(zcoolPrint < bigOriginal, 'print estimate stays below the original');
+assert(zcoolPrint < bigOriginal, 'high estimate stays below the original');
 assert(
   estimateCompressedBytes(zcoolPages, 'medium', bigOriginal) < zcoolPrint,
-  'send should estimate smaller than print'
+  'medium should estimate smaller than high'
 );
 console.log('compress size presets ok', { zcoolPrintMb: (zcoolPrint / 1024 / 1024).toFixed(1) });

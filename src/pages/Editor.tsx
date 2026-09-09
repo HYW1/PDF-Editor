@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
-import { compressPdfBytes, compressSuffix, type ExportQuality } from '../core/pdf-compress';
+import { compressPdfBytes, compressSuffix, probeCompressSizes, type ExportQuality } from '../core/pdf-compress';
 import { COMPRESS_PRESETS, estimateExportSizes, formatEstimate } from '../core/pdf-estimate';
 import { downloadBytes } from '../core/files';
 import { exportPdf } from '../core/pdf-engine';
@@ -52,6 +52,7 @@ export function Editor() {
   const [toast, setToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [job, setJob] = useState<{ title: string; done: number; total: number } | null>(null);
+  const [probedSizes, setProbedSizes] = useState<{ high: number; medium: number; low: number } | null>(null);
   const toastTimer = useRef(0);
   const stageRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -135,6 +136,28 @@ export function Editor() {
     () => estimateExportSizes(pages, docs, annotations),
     [annotations, docs, pages]
   );
+  const shownSizes = probedSizes
+    ? { ...exportSizes, high: probedSizes.high, medium: probedSizes.medium, low: probedSizes.low }
+    : exportSizes;
+
+  useEffect(() => {
+    if (sheet !== 'export' || !pages.length) {
+      setProbedSizes(null);
+      return;
+    }
+    let cancelled = false;
+    const original = exportSizes.original;
+    probeCompressSizes(pages, docs, original)
+      .then((sizes) => {
+        if (!cancelled) setProbedSizes(sizes);
+      })
+      .catch(() => {
+        if (!cancelled) setProbedSizes(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [docs, exportSizes.original, pages, sheet]);
 
   async function onAddImage(files: File[]) {
     setAddMode(false);
@@ -611,7 +634,7 @@ export function Editor() {
             >
               <span className="sheet-item-row">
                 <span>直接导出</span>
-                <span className="sheet-item-meta">{formatSize(exportSizes.original)}</span>
+                <span className="sheet-item-meta">{formatSize(shownSizes.original)}</span>
               </span>
               <span className="sheet-item-sub">保持原文件，不压缩</span>
             </button>
@@ -622,7 +645,7 @@ export function Editor() {
             >
               <span className="sheet-item-row">
                 <span>{COMPRESS_PRESETS.high.label}</span>
-                <span className="sheet-item-meta">{formatEstimate(exportSizes.high)}</span>
+                <span className="sheet-item-meta">{formatEstimate(shownSizes.high)}</span>
               </span>
               <span className="sheet-item-sub">{COMPRESS_PRESETS.high.hint}</span>
             </button>
@@ -633,7 +656,7 @@ export function Editor() {
             >
               <span className="sheet-item-row">
                 <span>{COMPRESS_PRESETS.medium.label}</span>
-                <span className="sheet-item-meta">{formatEstimate(exportSizes.medium)}</span>
+                <span className="sheet-item-meta">{formatEstimate(shownSizes.medium)}</span>
               </span>
               <span className="sheet-item-sub">{COMPRESS_PRESETS.medium.hint}</span>
             </button>
@@ -644,7 +667,7 @@ export function Editor() {
             >
               <span className="sheet-item-row">
                 <span>{COMPRESS_PRESETS.low.label}</span>
-                <span className="sheet-item-meta">{formatEstimate(exportSizes.low)}</span>
+                <span className="sheet-item-meta">{formatEstimate(shownSizes.low)}</span>
               </span>
               <span className="sheet-item-sub">{COMPRESS_PRESETS.low.hint}</span>
             </button>
@@ -660,7 +683,7 @@ export function Editor() {
               <span className="sheet-item-sub">一页一张图片</span>
             </button>
           </div>
-          <p className="sheet-note">适合打印会尽量保持清晰。已经很小或纯文字的稿，可能压不下去，会直接留下原文件。</p>
+          <p className="sheet-note">高质量会尽量保持清晰。已经很小或纯文字的稿，可能压不下去，会直接留下原文件。</p>
           <button className="sheet-cancel" onClick={() => setSheet(null)}>
             取消
           </button>
